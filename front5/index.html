@@ -5,7 +5,8 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="./index.js" defer></script>
-    <title>Document</title>
+    <link rel="stylesheet" href="./index.css">
+    <title>5</title>
     <style>
         .divs{
             width: 50px;
@@ -22,9 +23,11 @@
     </style>
 </head>
 <body>
-    <!-- <input type="text" id="texto">
-    <button onclick="sendMessage(texto.value)">Enviar</button>
-    <button onclick="conectar()">Conectar</button> -->
+    <!-- <input type="text" id="texto" placeholder="mensagem">
+    <input type="text" id="name" placeholder="nome">
+    <button onclick="sendMessage()">Enviar</button>
+    <button onclick="conectar()">Conectar</button>
+    <button onclick="setPlayerName()">setar o nome</button> -->
 
     <section class="container">
         <div id="0" class="divs"></div>
@@ -43,6 +46,11 @@
         <div id="13" class="divs"></div>
         <div id="14" class="divs"></div>
     </section>
-    
+
+    <input type="text" id="name" placeholder="nome">
+    <button onclick="start()">Startar</button>
+    <button id="btnDado" onclick="jogar()" disabled>Jogar o dado</button>
+    <div id="casinhas"></div>
+
 </body>
 </html>

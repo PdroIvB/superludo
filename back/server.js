@@ -17,10 +17,15 @@ wsServer.on('connection', function connection(ws){
     console.log('a new client has connected');
 
     let player = {
-        playerID: v4(),
+        id: v4(),
         connection: ws,
         roomId: null,
         pieces:[
+            {
+                id: 0,
+                position: null,
+                sprite: null
+            },
             {
                 id: 1,
                 position: null,
@@ -35,39 +40,66 @@ wsServer.on('connection', function connection(ws){
                 id: 3,
                 position: null,
                 sprite: null
-            },
-            {
-                id: 4,
-                position: null,
-                sprite: null
             }
         ]
     }
 
-    insertPlayer(player);
+    players.push(player);
     sendIdentifier(player, ws);
     
     ws.on('message', function Incoming(message){
         let msg = JSON.parse(message);
 
         switch (msg.type) {
-            case 'setPlayerName':
+            case 'start':
+                
+                    let player = players.find(player => player.id === msg.playerID);
+                    
+                    player.name = msg.playerName;
 
-                    players.find(player => player.playerID === msg.playerID).playerName = msg.name;
+                    insertPlayerInRoom(player);
+                    
+                    let uniqueRoom = getRoom(player);
 
+                    if(isRoomFull(uniqueRoom)) uniqueRoom.turn = 0;
+
+                    roomMsg = {
+                        type: 'room',
+                        room: uniqueRoom
+                    };
+                    
+                    ws.send(JSON.stringify(roomMsg));
+                    
+                    if(hasMoreThan1Player(uniqueRoom)){
+                        let otherRoomPlayers = [];
+                        uniqueRoom.players.forEach(player => {
+                            otherRoomPlayers.push(player);
+                        })
+                        otherRoomPlayers.pop();
+
+                        otherRoomPlayers.forEach(player => {
+                            player.connection.send(JSON.stringify(requestRoomUpdate = {
+                                type: 'requestRoomUpdate'
+                            }));
+                        });
+                    };
+                    
                 break;
             
-            case 'play':
+            case 'sendUpdatedRoom':
 
-                let player = players.find(player => player.playerID === msg.playerID);
-                let piece = player.pieces.find(piece => piece.id === msg.pieceID);
-                piece.position = piece.position + msg.numSort;
+                    ws.send(JSON.stringify(roomMsg = {
+                        type: 'room',
+                        room: getRoom(getPlayer(msg.playerID))
+                    }));
 
-                let pieceUpdate = {
-                    player:
-                };
+                break;
 
-                ws.send(JSON.stringify(pieceUpdate));
+            case 'numDado':
+
+                    let numDado = msg.numSort;
+
+                    console.log(numDado);
 
                 break;
         
@@ -75,24 +107,25 @@ wsServer.on('connection', function connection(ws){
             //     break;
         }
 
-        wsServer.clients.forEach(function each(client) {
-            if(client !== ws && client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify(msg));
-            };
-        });
+        // wsServer.clients.forEach(function each(client) {
+        //     if(client !== ws && client.readyState === WebSocket.OPEN) {
+        //         client.send(JSON.stringify(msg));
+        //     };
+        // });
     });
 });
 
 function sendIdentifier(player, ws) {
+    
     let identifier = {
         type: 'identifier',
-        playerID: player.playerID
+        playerID: player.id
     };
+
     ws.send(JSON.stringify(identifier))
 }
 
-function insertPlayer (player) {
-    players.push(player);
+function insertPlayerInRoom (player) {
 
     if(rooms.length === 0 ) {
 
@@ -105,17 +138,41 @@ function insertPlayer (player) {
 
         player.roomId = rooms[rooms.length - 1].id;
         rooms[rooms.length - 1].players.push(player);
+
+    } else {
+
+        let id = v4();
+        createRoom(id);
+        player.roomId = id;
+        rooms.find(room => room.id === id).players.push(player);
+
     }
 }
 
 function createRoom (id) {
     let room = {
         id: id,
+        turn: null,
         players: []
     }
 
     rooms.push(room);
 };
 
+function getRoom (player) {
+    return rooms.find(room => room.id === player.roomId);
+};
+
+function getPlayer (playerId) {
+    return players.find(player => player.id === playerId);
+}
+
+function hasMoreThan1Player (room) {
+    return room.players.length > 1 ? true : false
+}
+
+function isRoomFull (room) {
+    return room.players.length === 4 ? true : false;
+};
 
 server.listen(port, () => {console.log(`server listening on port ${port}`)});
