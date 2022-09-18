@@ -1,0 +1,7 @@
+falta:
+	- tirar da casinha só quando o dado tirar 6;
+	- peças começarem em lugares diferentes do tabuleiro; -> uma lógica pras peças darem a volta no tabuleiro
+	- reta final, só andar quando tiver o numero certo de casas;
+	- função de capturar outra peça, exceto em casas protegidas;
+	- quando jogador só tiver uma peça, andar automaticamente;
+	- entrar na reta final e o vitorioso do jogo;

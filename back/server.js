@@ -4,7 +4,7 @@ const port = 9999;
 const server = require('http').createServer(app);
 const WebSocket = require('ws');
 const { v4 } = require('uuid');
-const { request } = require('http');
+const { request, get } = require('http');
 
 app.use(express.json());
 
@@ -51,7 +51,7 @@ wsServer.on('connection', function connection(ws){
         let msg = JSON.parse(message);
 
         switch (msg.type) {
-            case 'start':
+            case 'initPlayer':
                 
                     let player = players.find(player => player.id === msg.playerID);
                     
@@ -61,48 +61,66 @@ wsServer.on('connection', function connection(ws){
                     
                     let uniqueRoom = getRoom(player);
 
-                    if(isRoomFull(uniqueRoom)) uniqueRoom.turn = 0;
+                    if(isRoomFull(uniqueRoom)) {
+                        uniqueRoom.turn = 0;
+                        uniqueRoom.dice = null;
+                    };
 
-                    roomMsg = {
+                    msgRoom = {
                         type: 'room',
                         room: uniqueRoom
                     };
                     
-                    ws.send(JSON.stringify(roomMsg));
-                    
-                    if(hasMoreThan1Player(uniqueRoom)){
+                    if(hasMoreThan1Player(uniqueRoom)) {
+                        ws.send(JSON.stringify(msgRoom));
+
                         let otherRoomPlayers = [];
+
                         uniqueRoom.players.forEach(player => {
                             otherRoomPlayers.push(player);
-                        })
+                        });
+
                         otherRoomPlayers.pop();
 
-                        otherRoomPlayers.forEach(player => {
-                            player.connection.send(JSON.stringify(requestRoomUpdate = {
-                                type: 'requestRoomUpdate'
-                            }));
-                        });
+                        askUpdateRoom(otherRoomPlayers);
+                    } else {
+                        ws.send(JSON.stringify(msgRoom));
                     };
                     
                 break;
             
             case 'sendUpdatedRoom':
 
-                    ws.send(JSON.stringify(roomMsg = {
+                    ws.send(JSON.stringify(msgRoom = {
                         type: 'room',
                         room: getRoom(getPlayer(msg.playerID))
                     }));
 
                 break;
 
-            case 'numDado':
+            case 'dado':
 
-                    let numDado = msg.numSort;
+                    getRoom(msg.player).dice = msg.numDado;
 
-                    console.log(numDado);
+                    askUpdateRoom(getRoom(msg.player).players);
 
                 break;
         
+            case 'endedTurn':
+
+                    let serverSideRoom = rooms.find(room => room.id === msg.player.roomId)
+
+                    serverSideRoom.dice = null;
+                    serverSideRoom.turn = msg.room.turn;
+
+                    let playerWhoPlayed = serverSideRoom.players.find(player => player.id === msg.player.id);
+
+                    playerWhoPlayed.pieces = msg.player.pieces;
+
+                    askUpdateRoom(serverSideRoom.players);
+
+                break;
+
             // default:
             //     break;
         }
@@ -168,11 +186,20 @@ function getPlayer (playerId) {
 }
 
 function hasMoreThan1Player (room) {
-    return room.players.length > 1 ? true : false
+    return room.players.length > 1 ? true : false;
 }
 
 function isRoomFull (room) {
     return room.players.length === 4 ? true : false;
+};
+
+function askUpdateRoom (players) {
+
+    players.forEach(player => {
+        player.connection.send(JSON.stringify(sendUpdateRoomRequest = {
+            type: 'updateRoomRequest'
+        }));
+    });
 };
 
 server.listen(port, () => {console.log(`server listening on port ${port}`)});

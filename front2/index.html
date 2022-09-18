@@ -23,33 +23,12 @@
     </style>
 </head>
 <body>
-    <!-- <input type="text" id="texto" placeholder="mensagem">
-    <input type="text" id="name" placeholder="nome">
-    <button onclick="sendMessage()">Enviar</button>
-    <button onclick="conectar()">Conectar</button>
-    <button onclick="setPlayerName()">setar o nome</button> -->
 
-    <section class="container">
-        <div id="0" class="divs"></div>
-        <div id="1" class="divs"></div>
-        <div id="2" class="divs"></div>
-        <div id="3" class="divs"></div>
-        <div id="4" class="divs"></div>
-        <div id="5" class="divs"></div>
-        <div id="6" class="divs"></div>
-        <div id="7" class="divs"></div>
-        <div id="8" class="divs"></div>
-        <div id="9" class="divs"></div>
-        <div id="10" class="divs"></div>
-        <div id="11" class="divs"></div>
-        <div id="12" class="divs"></div>
-        <div id="13" class="divs"></div>
-        <div id="14" class="divs"></div>
-    </section>
+    <section class="container" id="table"></section>
 
     <input type="text" id="name" placeholder="nome">
-    <button onclick="start()">Startar</button>
-    <button id="btnDado" onclick="jogar()" disabled>Jogar o dado</button>
+    <button id="initBtn">Init</button>
+    <button id="diceBtn" disabled>Jogar o dado</button>
     <div id="casinhas"></div>
 
 </body>
