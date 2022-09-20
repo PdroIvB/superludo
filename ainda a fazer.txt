@@ -5,3 +5,4 @@ falta:
 	- função de capturar outra peça, exceto em casas protegidas;
 	- quando jogador só tiver uma peça, andar automaticamente;
 	- entrar na reta final e o vitorioso do jogo;
+	- jogar dnv se tirar 6 ou comer outra peça;

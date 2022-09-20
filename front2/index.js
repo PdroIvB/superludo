@@ -2,21 +2,22 @@ let socketClient = new WebSocket('ws://localhost:9999');
 let name = document.getElementById('name');
 let diceBtn = document.getElementById('diceBtn');
 let initBtn = document.getElementById('initBtn');
-diceBtn.addEventListener('click', jogar);
+diceBtn.addEventListener('click', dice);
 diceBtn.style.display = 'none';
 initBtn.addEventListener('click', init);
-let room;
-let player;
+// let room;
+// let player;
 let playerID;
 let numDado;
 let hasDiced = false;
+let msg;
 
 socketClient.onopen = () => {
     console.log('connecteeeedd')
 };
 
 socketClient.onmessage = (event) => {
-    let msg = JSON.parse(event.data);
+    msg = JSON.parse(event.data);
 
     switch (msg.type) {
         case 'identifier':
@@ -26,34 +27,37 @@ socketClient.onmessage = (event) => {
             break;
 
         case 'room':
+                console.log('room just when arrived: ', msg.room);
 
-                room = msg.room;
-                player = room.players.find(player => player.id === playerID);
+                if(msg.room.turn !== null) {
+                    msg.room.turnsPlayer = msg.room.players[msg.room.turn % 4];
 
-                if(room.turn !== null) turn();
-                if(room.dice) console.log(`${room.turnsPlayer.name} tirou ${room.dice} no dado!`);
-                
+                    if(msg.room.dice) {
+                        console.log(`${msg.room.turnsPlayer.name} tirou ${msg.room.dice} no dado!`);
+
+                        playOrPass();
+                    };
+
+                    if(!msg.room.diced) turn();
+
+                } else {
+
+                    console.log('Aguardando outros jogadores entrarem para iniciar a partida!');
+                };
+
                 renderAll();
+
             break;
 
         case 'updateRoomRequest':
             
                 socketClient.send(JSON.stringify(requestRoomUpdate = {
                     type: 'sendUpdatedRoom',
-                    playerID: player.id
+                    playerID: playerID
                 }));
 
             break;
-
-        case 'turn':
-
-                a;
-
-            break;
-    
-        // default:
-        //     break;
-    }
+    };
 };
 
 function init() {
@@ -73,59 +77,85 @@ function init() {
 };
 
 function turn () {
-    room.turnsPlayer = room.players[room.turn % 4];
 
-    if ( player === room.turnsPlayer ) {
-        console.log(room.turnsPlayer.name + ", Eh sua vez de jogar o dado!");
+    if (msg.room.turnsPlayer.id === playerID) {
+        console.log(msg.room.turnsPlayer.name + ", Eh sua vez de jogar o dado!");
     } else {
-        console.log('É a vez de: ' + room.turnsPlayer.name);
+        console.log('É a vez de: ' + msg.room.turnsPlayer.name);
     };
 
     ableDisableDiceBtn();
 };
 
-function passTurn () {
-    room.turn++;
-    document.body.removeEventListener('click', moving);
-    hasDiced = false;
-
-    let msgEndedTurn = {
-        type: 'endedTurn',
-        player: player,
-        room: room
-    };
-
-    socketClient.send(JSON.stringify(msgEndedTurn));
-};
-
-function jogar () {
-    numDado = Math.floor(Math.random() * 3 + 1);
+function dice () {
+    numDado = Math.floor(Math.random() * 6 + 1);
+    // numDado = 6;
     hasDiced = true;
     diceBtn.disabled = true;
+    console.log('numDado ' + numDado);
     
     let msgDado = {
         type: 'dado',
-        numDado: numDado,
-        player: player
+        numDado: numDado
     };
     
     socketClient.send(JSON.stringify(msgDado));
+};
+
+function passTurn () {
+    if(msg.room.turnsPlayer.id === playerID) {
+        msg.room.turn++;
+        
+        console.log('sala rifhtbefore sending: ', msg.room);
+        let msgEndedTurn = {
+            type: 'endedTurn',
+            room: msg.room
+        };
     
-    move();
+        socketClient.send(JSON.stringify(msgEndedTurn));
+    } else {
+        console.log(`não sou o jogador da vez, esperando ${msg.room.turnsPlayer.name} enviar o fim do turno`);
+    }
+};
+
+function playOrPass () {
+    if(hasPiecesOnBoard(msg.room.turnsPlayer) || msg.room.dice == 6) {
+
+        if(msg.room.dice == 6) canDiceAgain();
+
+        console.log(`${msg.room.turnsPlayer.name} tem ` + howManyPiecesHasOnBoard(msg.room.turnsPlayer) + ' peças em jogo');
+
+        if(howManyPiecesHasOnBoard(msg.room.turnsPlayer) == 1) {
+
+            console.log('escrever aqui logica pra andar peça sozinha');
+            moveSinglePiece();
+            
+        } else if () {
+
+            move();
+        }
+
+    } else if(dice != 6) {
+        
+        console.log(`${msg.room.turnsPlayer.name} não tem peça no tabuleiro e não tirou 6. A vez será passada`);
+        hasDiced = false;    
+
+        passTurn();
+    };
 };
 
 function renderAll() {
     document.getElementById('casinhas').innerHTML = '';
     document.getElementById('table').innerHTML = '';
 
-    for(let i = 1; i < 30; i++) {
+    for(let i = 1; i <= 15; i++) {
         let cell = document.createElement('div');
         cell.setAttribute('class', 'divs');
         cell.setAttribute('id', `casa${i}`);
         document.getElementById('table').appendChild(cell);
     };
     
-    room.players.forEach( player => {
+    msg.room.players.forEach( player => {
         let playerConteiner = document.createElement('div');
         playerConteiner.setAttribute('class', 'playerConteiner');
         playerConteiner.setAttribute('id', `${player.name}Conteiner`);
@@ -155,7 +185,7 @@ function renderAll() {
 };
 
 function ableDisableDiceBtn () {
-    if ( player === room.turnsPlayer && !hasDiced) {
+    if ( msg.room.turnsPlayer.id === playerID && !hasDiced) {
         diceBtn.disabled = false;
     } else {
         diceBtn.disabled = true;
@@ -164,25 +194,48 @@ function ableDisableDiceBtn () {
 
 function move () {
 
-    document.body.addEventListener("click", moving);
+    if (msg.room.turnsPlayer.id === playerID ) {
+        document.body.addEventListener("click", moving);
+        console.log('clique em uma de suas peças para movê-la no tabuleiro');
+    } else {
+        console.log(`${msg.room.turnsPlayer.name} está tomando sua ação!`);
+    };
+
 };
 
 function moving (e) {
 
-    if(e.target.matches(`[data-playerid="${room.turnsPlayer.id}"]`)) {
+    if(e.target.matches(`[data-playerid="${msg.room.turnsPlayer.id}"]`)) {
 
         let pieceData =  e.target.attributes.id.value.split('-');
-        let piece = room.turnsPlayer.pieces.find(piece => piece.id == pieceData[1]);
+        let piece = msg.room.turnsPlayer.pieces.find(piece => piece.id == pieceData[1]);
 
         piece.position += numDado;
 
         renderAll();
 
-        e.target.remove();
+        // e.target.remove();
 
         console.log('finalizando turno');
+        document.body.removeEventListener('click', moving);    
         passTurn();
     } else {
         console.log("Clique nas suas peças!");
     };
+};
+
+function hasPiecesOnBoard (player) {
+    return player.pieces.find(piece => piece.position !== null) ? true : false;
+};
+
+function howManyPiecesHasOnBoard(player) {
+    return player.pieces.filter(piece => piece.position !==null).length;
+};
+
+function moveSinglePiece () {
+
+};
+
+function canDiceAgain () {
+
 };

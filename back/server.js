@@ -5,6 +5,7 @@ const server = require('http').createServer(app);
 const WebSocket = require('ws');
 const { v4 } = require('uuid');
 const { request, get } = require('http');
+const { inspect } = require('node:util');
 
 app.use(express.json());
 
@@ -12,6 +13,7 @@ const wsServer = new WebSocket.Server({ server:server });
 
 const players = [];
 const rooms = [];
+let contador = 0;
 
 wsServer.on('connection', function connection(ws){
     console.log('a new client has connected');
@@ -19,7 +21,7 @@ wsServer.on('connection', function connection(ws){
     let player = {
         id: v4(),
         connection: ws,
-        roomId: null,
+        roomID: null,
         pieces:[
             {
                 id: 0,
@@ -49,17 +51,19 @@ wsServer.on('connection', function connection(ws){
     
     ws.on('message', function Incoming(message){
         let msg = JSON.parse(message);
+        let uniqueRoom = getRoom(ws);
+
 
         switch (msg.type) {
             case 'initPlayer':
                 
-                    let player = players.find(player => player.id === msg.playerID);
+                    player = players.find(player => player.id === msg.playerID);
                     
                     player.name = msg.playerName;
 
                     insertPlayerInRoom(player);
                     
-                    let uniqueRoom = getRoom(player);
+                    uniqueRoom = getRoom(player);
 
                     if(isRoomFull(uniqueRoom)) {
                         uniqueRoom.turn = 0;
@@ -72,18 +76,10 @@ wsServer.on('connection', function connection(ws){
                     };
                     
                     if(hasMoreThan1Player(uniqueRoom)) {
-                        ws.send(JSON.stringify(msgRoom));
 
-                        let otherRoomPlayers = [];
-
-                        uniqueRoom.players.forEach(player => {
-                            otherRoomPlayers.push(player);
-                        });
-
-                        otherRoomPlayers.pop();
-
-                        askUpdateRoom(otherRoomPlayers);
+                        askUpdateRoom(uniqueRoom.players);
                     } else {
+                        
                         ws.send(JSON.stringify(msgRoom));
                     };
                     
@@ -91,45 +87,42 @@ wsServer.on('connection', function connection(ws){
             
             case 'sendUpdatedRoom':
 
+                    contador++;
+                    console.log("enviando a sala atualizada", contador);
+
                     ws.send(JSON.stringify(msgRoom = {
                         type: 'room',
-                        room: getRoom(getPlayer(msg.playerID))
+                        room: getRoom(getPlayer(ws))
                     }));
 
                 break;
 
             case 'dado':
 
-                    getRoom(msg.player).dice = msg.numDado;
+                    console.log('chegamos no type dado');
+                    uniqueRoom = getRoom(getPlayer(ws));
+                    uniqueRoom.dice = msg.numDado;
+                    uniqueRoom.diced = true;
+                    uniqueRoom.turnsPlayer = uniqueRoom.players[uniqueRoom.turn % 4];
 
-                    askUpdateRoom(getRoom(msg.player).players);
+                    askUpdateRoom(uniqueRoom.players);
 
                 break;
         
             case 'endedTurn':
 
-                    let serverSideRoom = rooms.find(room => room.id === msg.player.roomId)
+                    console.log('chegamos ao type endedturn');
+                    uniqueRoom = getRoom(getPlayer(ws));
+                    
+                    uniqueRoom.dice = null;
+                    uniqueRoom.diced = false;
+                    uniqueRoom.turn = msg.room.turn;
+                    uniqueRoom.turnsPlayer.pieces = msg.room.turnsPlayer.pieces;
 
-                    serverSideRoom.dice = null;
-                    serverSideRoom.turn = msg.room.turn;
-
-                    let playerWhoPlayed = serverSideRoom.players.find(player => player.id === msg.player.id);
-
-                    playerWhoPlayed.pieces = msg.player.pieces;
-
-                    askUpdateRoom(serverSideRoom.players);
+                    askUpdateRoom(uniqueRoom.players);
 
                 break;
-
-            // default:
-            //     break;
-        }
-
-        // wsServer.clients.forEach(function each(client) {
-        //     if(client !== ws && client.readyState === WebSocket.OPEN) {
-        //         client.send(JSON.stringify(msg));
-        //     };
-        // });
+        };
     });
 });
 
@@ -149,19 +142,19 @@ function insertPlayerInRoom (player) {
 
         let id = v4();
         createRoom(id);
-        player.roomId = id;
+        player.roomID = id;
         rooms.find(room => room.id === id).players.push(player);
 
     } else if (rooms[rooms.length - 1].players.length < 4) {
 
-        player.roomId = rooms[rooms.length - 1].id;
+        player.roomID = rooms[rooms.length - 1].id;
         rooms[rooms.length - 1].players.push(player);
 
     } else {
 
         let id = v4();
         createRoom(id);
-        player.roomId = id;
+        player.roomID = id;
         rooms.find(room => room.id === id).players.push(player);
 
     }
@@ -178,11 +171,11 @@ function createRoom (id) {
 };
 
 function getRoom (player) {
-    return rooms.find(room => room.id === player.roomId);
+    return rooms.find(room => room.id === player.roomID);
 };
 
-function getPlayer (playerId) {
-    return players.find(player => player.id === playerId);
+function getPlayer (ws) {
+    return players.find(player => player.connection === ws);
 }
 
 function hasMoreThan1Player (room) {
