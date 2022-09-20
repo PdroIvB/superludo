@@ -79,7 +79,7 @@ wsServer.on('connection', function connection(ws){
 
                         askUpdateRoom(uniqueRoom.players);
                     } else {
-                        
+
                         ws.send(JSON.stringify(msgRoom));
                     };
                     
@@ -164,7 +164,9 @@ function createRoom (id) {
     let room = {
         id: id,
         turn: null,
-        players: []
+        players: [],
+        dice: null,
+        diced: null
     }
 
     rooms.push(room);

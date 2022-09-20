@@ -5,8 +5,6 @@ let initBtn = document.getElementById('initBtn');
 diceBtn.addEventListener('click', dice);
 diceBtn.style.display = 'none';
 initBtn.addEventListener('click', init);
-// let room;
-// let player;
 let playerID;
 let numDado;
 let hasDiced = false;
@@ -89,7 +87,6 @@ function turn () {
 
 function dice () {
     numDado = Math.floor(Math.random() * 6 + 1);
-    // numDado = 6;
     hasDiced = true;
     diceBtn.disabled = true;
     console.log('numDado ' + numDado);
@@ -119,29 +116,65 @@ function passTurn () {
 };
 
 function playOrPass () {
-    if(hasPiecesOnBoard(msg.room.turnsPlayer) || msg.room.dice == 6) {
 
-        if(msg.room.dice == 6) canDiceAgain();
-
-        console.log(`${msg.room.turnsPlayer.name} tem ` + howManyPiecesHasOnBoard(msg.room.turnsPlayer) + ' peças em jogo');
+    if(hasPiecesOnBoard(msg.room.turnsPlayer)) {
 
         if(howManyPiecesHasOnBoard(msg.room.turnsPlayer) == 1) {
 
-            console.log('escrever aqui logica pra andar peça sozinha');
             moveSinglePiece();
-            
-        } else if () {
+            console.log(`${msg.room.turnsPlayer.name} tem apenas uma peça em jogo, ela foi movida automaticamente e a vez será passada`);
+            passTurn();
+        } else {
 
             move();
-        }
+        };
 
-    } else if(dice != 6) {
-        
-        console.log(`${msg.room.turnsPlayer.name} não tem peça no tabuleiro e não tirou 6. A vez será passada`);
-        hasDiced = false;    
+    } else if(!hasPiecesOnBoard(msg.room.turnsPlayer) && msg.room.dice == 6) {
 
+        move()
+    } else {
+
+        console.log(`${msg.room.turnsPlayer.name} não tem peças no tabuleiro e não tirou 6 no dado, a vez será passada`)
         passTurn();
-    };
+    }
+
+
+
+
+
+
+
+
+
+
+
+    // if(hasPiecesOnBoard(msg.room.turnsPlayer) || msg.room.dice == 6) {
+
+    //     if(msg.room.dice == 6) canDiceAgain();
+
+    //     console.log(`${msg.room.turnsPlayer.name} tem ` + howManyPiecesHasOnBoard(msg.room.turnsPlayer) + ' peças em jogo');
+
+    //     if(howManyPiecesHasOnBoard(msg.room.turnsPlayer) == 1) {
+
+    //         console.log('escrever aqui logica pra andar peça sozinha');
+    //         moveSinglePiece();
+
+    //     } else if (false) {
+
+    //         move();
+    //     }
+
+    // } else if(dice != 6) {
+
+    //     if(hasPiecesOnBoard(msg.room.turnsPlayer)) {
+    //         move();
+    //     };
+
+    //     console.log(`${msg.room.turnsPlayer.name} não tem peça no tabuleiro e não tirou 6. A vez será passada`);
+    //     hasDiced = false;    
+
+    //     passTurn();
+    // };
 };
 
 function renderAll() {
@@ -185,7 +218,7 @@ function renderAll() {
 };
 
 function ableDisableDiceBtn () {
-    if ( msg.room.turnsPlayer.id === playerID && !hasDiced) {
+    if ( msg.room.turnsPlayer.id === playerID && !msg.room.diced) {
         diceBtn.disabled = false;
     } else {
         diceBtn.disabled = true;
@@ -224,16 +257,18 @@ function moving (e) {
     };
 };
 
+function moveSinglePiece () {
+    console.log("auto moving single piece");
+
+    
+};
+
 function hasPiecesOnBoard (player) {
     return player.pieces.find(piece => piece.position !== null) ? true : false;
 };
 
 function howManyPiecesHasOnBoard(player) {
     return player.pieces.filter(piece => piece.position !==null).length;
-};
-
-function moveSinglePiece () {
-
 };
 
 function canDiceAgain () {
