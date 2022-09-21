@@ -1,0 +1,109 @@
+body {
+  font-family: "Press Start 2P", cursive;
+  background-color: #0e0f2a;
+}
+
+input:hover {
+  cursor: pointer;
+  scale: 1.05;
+  transition: 200ms;
+}
+
+.zoom-out-200ms {
+  transition: 200ms;
+}
+
+/* .center {
+  text-align: center;
+} */
+
+.red-title {
+  color: #f84020;
+}
+
+.yellow-title {
+  color: #feb019;
+}
+
+.green-title {
+  color: #00a800;
+}
+
+.purple-title {
+  color: #6f37af;
+}
+
+/* .ps2p {
+  font-family: "Press Start 2P", cursive;
+} */
+
+#login-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #212339;
+  width: 500px;
+  height: 300px;
+  margin: auto;
+  border-radius: 10px;
+  margin-top: 6%;
+  padding: 65px 20px;
+}
+
+#login-container h1 {
+  color: #fff;
+  font-size: 30px;
+}
+
+#login-container div {
+  margin-top: 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#name {
+  width: 400px;
+  height: 40px;
+  background: #404156;
+  border-radius: 10px;
+  font-family: "Montserrat";
+  font-style: normal;
+  font-weight: 500;
+  font-size: 20px;
+  line-height: 24px;
+  color: #bababa;
+  outline: none;
+  padding-left: 20px;
+  text-align: center;
+}
+
+/* #chatName {
+  background-color: #404156;
+  border-radius: 10px;
+  width: 428px;
+  height: 50px;
+  font-size: 20px;
+  color: #fff;
+} */
+
+#initBtn {
+  margin-top: 30px;
+  background-color: #f4f2f5;
+  border-radius: 50px;
+  width: 200px;
+  height: 55px;
+  font-family: "Press Start 2P";
+  font-style: normal;
+  font-weight: 400;
+  font-size: 17px;
+  line-height: 20px;
+  color: #212339;
+  cursor: pointer;
+}
+
+/* #message {
+  color: #f00;
+  font-size: 15px;
+} */

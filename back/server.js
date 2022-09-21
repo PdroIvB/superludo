@@ -77,6 +77,7 @@ wsServer.on('connection', function connection(ws){
                     
                     if(hasMoreThan1Player(uniqueRoom)) {
 
+                        console.log("chegamos no type room");
                         askUpdateRoom(uniqueRoom.players);
                     } else {
 
@@ -116,7 +117,13 @@ wsServer.on('connection', function connection(ws){
                     
                     uniqueRoom.dice = null;
                     uniqueRoom.diced = false;
-                    uniqueRoom.turn = msg.room.turn;
+
+                    if(msg.room.dice == 6) {
+                        uniqueRoom.turn = (msg.room.turn - 1);
+                    } else {
+                        uniqueRoom.turn = msg.room.turn;
+                    }
+
                     uniqueRoom.turnsPlayer.pieces = msg.room.turnsPlayer.pieces;
 
                     askUpdateRoom(uniqueRoom.players);
@@ -124,7 +131,18 @@ wsServer.on('connection', function connection(ws){
                 break;
         };
     });
+
+    ws.on('close', function Closing () {
+        if(getPlayer(ws).name) {
+            getPlayer(ws).isBot = true;
+            console.log(`Player ${getPlayer(ws).name} has disconnected from ${getRoom(getPlayer(ws)).id} room`);
+            askUpdateRoom(getRoom(getPlayer(ws)).players);
+        } else {
+            console.log("A potencial player has disconnected before been inserted in a room");
+        };
+    });
 });
+
 
 function sendIdentifier(player, ws) {
     

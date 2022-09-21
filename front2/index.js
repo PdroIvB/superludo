@@ -7,7 +7,6 @@ diceBtn.style.display = 'none';
 initBtn.addEventListener('click', init);
 let playerID;
 let numDado;
-let hasDiced = false;
 let msg;
 
 socketClient.onopen = () => {
@@ -27,13 +26,21 @@ socketClient.onmessage = (event) => {
         case 'room':
                 console.log('room just when arrived: ', msg.room);
 
+                if(msg.room.players.filter(player => player.isBot === true)) {
+                    msg.room.players.filter(player => player.isBot === true).forEach(disconnectedPlayer => console.log(`${disconnectedPlayer.name} desconectou da sala.`));
+                };
+
                 if(msg.room.turn !== null) {
                     msg.room.turnsPlayer = msg.room.players[msg.room.turn % 4];
 
                     if(msg.room.dice) {
                         console.log(`${msg.room.turnsPlayer.name} tirou ${msg.room.dice} no dado!`);
 
-                        playOrPass();
+                        if(msg.room.turnsPlayer.isBot) {
+                            autoMove();
+                        } else {
+                            playOrPass();
+                        }
                     };
 
                     if(!msg.room.diced) turn();
@@ -68,10 +75,10 @@ function init() {
 
     socketClient.send(JSON.stringify(msgInit));
     name.value = '';
-    initBtn.disabled = true;
-    diceBtn.style.display = 'flex';
     name.style.display = 'none';
+    initBtn.disabled = true;
     initBtn.style.display = 'none';
+    diceBtn.style.display = 'flex';
 };
 
 function turn () {
@@ -80,6 +87,9 @@ function turn () {
         console.log(msg.room.turnsPlayer.name + ", Eh sua vez de jogar o dado!");
     } else {
         console.log('É a vez de: ' + msg.room.turnsPlayer.name);
+        if (msg.room.turnsPlayer.isBot) {
+            autoMove();
+        }
     };
 
     ableDisableDiceBtn();
@@ -87,7 +97,7 @@ function turn () {
 
 function dice () {
     numDado = Math.floor(Math.random() * 6 + 1);
-    hasDiced = true;
+    // numDado = 6;
     diceBtn.disabled = true;
     console.log('numDado ' + numDado);
     
@@ -119,13 +129,24 @@ function playOrPass () {
 
     if(hasPiecesOnBoard(msg.room.turnsPlayer)) {
 
-        if(howManyPiecesHasOnBoard(msg.room.turnsPlayer) == 1) {
+        if(playerPiecesOnBoard(msg.room.turnsPlayer).length == 1 && msg.room.dice !== 6) {
 
             moveSinglePiece();
+
             console.log(`${msg.room.turnsPlayer.name} tem apenas uma peça em jogo, ela foi movida automaticamente e a vez será passada`);
+
             passTurn();
+
+        } else if(playerPiecesOnBoard(msg.room.turnsPlayer).length == 1 && msg.room.dice === 6) { 
+
+            let piecesOnBoard = playerPiecesOnBoard(msg.room.turnsPlayer);
+            console.log(piecesOnBoard);
+            move();
+
         } else {
 
+            let piecesOnBoard = playerPiecesOnBoard(msg.room.turnsPlayer);
+            console.log(piecesOnBoard);
             move();
         };
 
@@ -138,53 +159,17 @@ function playOrPass () {
         passTurn();
     }
 
-
-
-
-
-
-
-
-
-
-
-    // if(hasPiecesOnBoard(msg.room.turnsPlayer) || msg.room.dice == 6) {
-
-    //     if(msg.room.dice == 6) canDiceAgain();
-
-    //     console.log(`${msg.room.turnsPlayer.name} tem ` + howManyPiecesHasOnBoard(msg.room.turnsPlayer) + ' peças em jogo');
-
-    //     if(howManyPiecesHasOnBoard(msg.room.turnsPlayer) == 1) {
-
-    //         console.log('escrever aqui logica pra andar peça sozinha');
-    //         moveSinglePiece();
-
-    //     } else if (false) {
-
-    //         move();
-    //     }
-
-    // } else if(dice != 6) {
-
-    //     if(hasPiecesOnBoard(msg.room.turnsPlayer)) {
-    //         move();
-    //     };
-
-    //     console.log(`${msg.room.turnsPlayer.name} não tem peça no tabuleiro e não tirou 6. A vez será passada`);
-    //     hasDiced = false;    
-
-    //     passTurn();
-    // };
 };
 
 function renderAll() {
     document.getElementById('casinhas').innerHTML = '';
     document.getElementById('table').innerHTML = '';
 
-    for(let i = 1; i <= 15; i++) {
+    for(let i = 1; i <= 52; i++) {
         let cell = document.createElement('div');
         cell.setAttribute('class', 'divs');
         cell.setAttribute('id', `casa${i}`);
+        cell.innerHTML = i;
         document.getElementById('table').appendChild(cell);
     };
     
@@ -243,15 +228,21 @@ function moving (e) {
         let pieceData =  e.target.attributes.id.value.split('-');
         let piece = msg.room.turnsPlayer.pieces.find(piece => piece.id == pieceData[1]);
 
-        piece.position += numDado;
+        if(piece.position !== null || msg.room.dice == 6){
 
-        renderAll();
+            sumPiecePosition(piece);
+            
+            console.log('finalizando turno');
 
-        // e.target.remove();
+            document.body.removeEventListener('click', moving);    
 
-        console.log('finalizando turno');
-        document.body.removeEventListener('click', moving);    
-        passTurn();
+            passTurn();
+
+        } else if (piece.position === null) {
+
+            console.log('ce num tirou 6 véi, então clica numa pc q ja tá em jogo parça');
+        }
+
     } else {
         console.log("Clique nas suas peças!");
     };
@@ -260,17 +251,144 @@ function moving (e) {
 function moveSinglePiece () {
     console.log("auto moving single piece");
 
-    
+    msg.room.turnsPlayer.pieces.find(piece => piece.position !== null).position += msg.room.dice;
 };
 
 function hasPiecesOnBoard (player) {
     return player.pieces.find(piece => piece.position !== null) ? true : false;
 };
 
-function howManyPiecesHasOnBoard(player) {
-    return player.pieces.filter(piece => piece.position !==null).length;
+function playerPiecesOnBoard(player) {
+    return player.pieces.filter(piece => piece.position !== null);
 };
 
-function canDiceAgain () {
+function autoMove() {
 
+    if(isWhoIsGoingToPlayForBot()) {
+        console.log("vou jogar pelo bot");
+
+        if(!msg.room.diced) {
+
+            console.log("jogando dado pelo bot")
+
+            dice();
+
+        } else {
+            console.log('movimentar a peça do bot');
+
+            if(hasPiecesOnBoard(msg.room.turnsPlayer)) {
+
+                if(playerPiecesOnBoard(msg.room.turnsPlayer).length == 1 && msg.room.dice !== 6) {
+        
+                    msg.room.turnsPlayer.pieces.reduce(function(prev, current) {
+                        return (prev.position > current.position) ? prev : current
+                    }).position += msg.room.dice;
+        
+                    console.log(`${msg.room.turnsPlayer.name} tem apenas uma peça em jogo, ela foi movida automaticamente e a vez será passada`);
+        
+                    passTurnForBot();
+        
+                } else if(playerPiecesOnBoard(msg.room.turnsPlayer).length == 1 && msg.room.dice === 6) { 
+
+                    // msg.room.turnsPlayer.pieces.find(piece => piece.position === null).position += msg.room.dice;
+
+                    sumPiecePosition(msg.room.turnsPlayer.pieces.find(piece => piece.position === null));
+
+                    passTurnForBot();
+        
+                } else {
+
+                    console.log("bot tem mais de uma peça no tabuleiro e nao tirou 6, decidir com qual movimentar");
+
+                    // msg.room.turnsPlayer.pieces.reduce(function(prev, current) {
+                    //     return (prev.position > current.position) ? prev : current
+                    // }).position += msg.room.dice;
+
+                    sumPiecePosition(msg.room.turnsPlayer.pieces.reduce(function(prev, current) {
+                        return (prev.position > current.position) ? prev : current
+                    }));
+
+
+                    passTurnForBot()
+                };
+        
+            } else if(!hasPiecesOnBoard(msg.room.turnsPlayer) && msg.room.dice == 6) {
+        
+                console.log("bot sem peças no tabuleiro mas tirou 6 no dado, fazer a lógica de tirar alguma peça da casinha");
+
+                // msg.room.turnsPlayer.pieces[0].position += msg.room.dice;
+
+                sumPiecePosition(msg.room.turnsPlayer.pieces[0]);
+
+                passTurnForBot();
+
+            } else {
+        
+                console.log(`${msg.room.turnsPlayer.name} não tem peças no tabuleiro e não tirou 6 no dado, a vez será passada`)
+                passTurnForBot();
+            }
+        };
+
+    } else {
+        console.log("aguardando a jogada do bot");
+    }
+}
+
+function passTurnForBot () {
+    if(isWhoIsGoingToPlayForBot()) {
+        msg.room.turn++;
+        
+        console.log('sala rifhtbefore sending: ', msg.room);
+        let msgEndedTurn = {
+            type: 'endedTurn',
+            room: msg.room
+        };
+    
+        socketClient.send(JSON.stringify(msgEndedTurn));
+    } else {
+        console.log(`não sou o jogador da vez, esperando ${msg.room.turnsPlayer.name} enviar o fim do turno`);
+    }
+};
+
+function isWhoIsGoingToPlayForBot () {
+    if(((++msg.room.turn) % 4) == msg.room.players.indexOf(msg.room.players.find(player => player.id === playerID))) {
+        --msg.room.turn;
+        return true;
+    } else {
+        --msg.room.turn;
+        return false;
+    }
+};
+
+function sumPiecePosition (piece) {
+
+    if(!hasPiecesOnBoard(msg.room.turnsPlayer)){
+        if(msg.room.turnsPlayer === msg.room.players[0]) {
+            piece.position = piece.position - 5 + msg.room.dice;
+        } else if (msg.room.turnsPlayer === msg.room.players[1]) {
+            piece.position = piece.position + 7 + msg.room.dice;
+            
+        } else if (msg.room.turnsPlayer === msg.room.players[2]) {
+            piece.position = piece.position + 19 + msg.room.dice;
+            
+        } else if (msg.room.turnsPlayer === msg.room.players[3]) {
+            piece.position = piece.position + 31 + msg.room.dice;
+            
+        };
+    } else if (piece.position === null) {
+        if(msg.room.turnsPlayer === msg.room.players[0]) {
+            piece.position = piece.position - 5 + msg.room.dice;
+        } else if (msg.room.turnsPlayer === msg.room.players[1]) {
+            piece.position = piece.position + 7 + msg.room.dice;
+            
+        } else if (msg.room.turnsPlayer === msg.room.players[2]) {
+            piece.position = piece.position + 19 + msg.room.dice;
+            
+        } else if (msg.room.turnsPlayer === msg.room.players[3]) {
+            piece.position = piece.position + 31 + msg.room.dice;
+            
+        };
+    } else {
+        piece.position += msg.room.dice;
+    }
 };
