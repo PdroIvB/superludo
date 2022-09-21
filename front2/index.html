@@ -20,16 +20,29 @@
         .container{
             display: flex;
         }
+        
+        .finalCells {
+            width: 50px;
+            height: 50px;
+            /* background-color: black; */
+            border: solid purple;
+            display: flex;
+            flex-direction: column;
+        }
     </style>
 </head>
 <body>
 
+    <button id="diceBtn" disabled>Jogar o dado</button>
     <section class="container" id="table"></section>
 
     <input type="text" id="name" placeholder="nome">
+    <div id="retaFinal-0" class="container"></div>
+    <div id="retaFinal-1" class="container"></div>
+    <div id="retaFinal-2" class="container"></div>
+    <div id="retaFinal-3" class="container"></div>
+    <div id="casinhas" class="container"></div>
     <button id="initBtn">JOIN</button>
-    <button id="diceBtn" disabled>Jogar o dado</button>
-    <div id="casinhas"></div>
 
 </body>
 </html>

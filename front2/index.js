@@ -8,6 +8,7 @@ initBtn.addEventListener('click', init);
 let playerID;
 let numDado;
 let msg;
+let allPieces;
 
 socketClient.onopen = () => {
     console.log('connecteeeedd')
@@ -67,9 +68,11 @@ socketClient.onmessage = (event) => {
 
 function init() {
 
+    let nameToSend = !name.value ? `JogadorSemNome` : name.value;
+
     let msgInit = {
         type: 'initPlayer',
-        playerName: name.value,
+        playerName: nameToSend,
         playerID: playerID
     }
 
@@ -139,14 +142,10 @@ function playOrPass () {
 
         } else if(playerPiecesOnBoard(msg.room.turnsPlayer).length == 1 && msg.room.dice === 6) { 
 
-            let piecesOnBoard = playerPiecesOnBoard(msg.room.turnsPlayer);
-            console.log(piecesOnBoard);
             move();
 
         } else {
 
-            let piecesOnBoard = playerPiecesOnBoard(msg.room.turnsPlayer);
-            console.log(piecesOnBoard);
             move();
         };
 
@@ -164,6 +163,10 @@ function playOrPass () {
 function renderAll() {
     document.getElementById('casinhas').innerHTML = '';
     document.getElementById('table').innerHTML = '';
+    document.getElementById('retaFinal-0').innerHTML = '';
+    document.getElementById('retaFinal-1').innerHTML = '';
+    document.getElementById('retaFinal-2').innerHTML = '';
+    document.getElementById('retaFinal-3').innerHTML = '';
 
     for(let i = 1; i <= 52; i++) {
         let cell = document.createElement('div');
@@ -171,6 +174,35 @@ function renderAll() {
         cell.setAttribute('id', `casa${i}`);
         cell.innerHTML = i;
         document.getElementById('table').appendChild(cell);
+    };
+
+    for(let i = 101; i <= 106; i++) {
+        let finalCell = document.createElement('div');
+        finalCell.setAttribute('class', 'finalCells');
+        finalCell.setAttribute('id', `casaFinal-${i}`);
+        finalCell.innerHTML = `casaFinal-${i}`;
+        document.getElementById('retaFinal-0').appendChild(finalCell);
+    };
+    for(let i = 107; i <= 111; i++) {
+        let finalCell = document.createElement('div');
+        finalCell.setAttribute('class', 'finalCells');
+        finalCell.setAttribute('id', `casaFinal-${i}`);
+        finalCell.innerHTML = `casaFinal-${i}`;
+        document.getElementById('retaFinal-1').appendChild(finalCell);
+    };
+    for(let i = 112; i <= 116; i++) {
+        let finalCell = document.createElement('div');
+        finalCell.setAttribute('class', 'finalCells');
+        finalCell.setAttribute('id', `casaFinal-${i}`);
+        finalCell.innerHTML = `casaFinal-${i}`;
+        document.getElementById('retaFinal-2').appendChild(finalCell);
+    };
+    for(let i = 117; i <= 121; i++) {
+        let finalCell = document.createElement('div');
+        finalCell.setAttribute('class', 'finalCells');
+        finalCell.setAttribute('id', `casaFinal-${i}`);
+        finalCell.innerHTML = `casaFinal-${i}`;
+        document.getElementById('retaFinal-3').appendChild(finalCell);
     };
     
     msg.room.players.forEach( player => {
@@ -191,8 +223,14 @@ function renderAll() {
             playerPiece.setAttribute('data-playerid', `${player.id}`);
             
             if(piece.position !== null) {                
+                if(piece.position > 100){
 
-                document.getElementById(`casa${piece.position}`).appendChild(playerPiece);
+                    document.getElementById(`casaFinal-${piece.position}`).appendChild(playerPiece);
+
+                } else {
+
+                    document.getElementById(`casa${piece.position}`).appendChild(playerPiece);
+                }
 
             } else {
 
@@ -251,7 +289,9 @@ function moving (e) {
 function moveSinglePiece () {
     console.log("auto moving single piece");
 
-    msg.room.turnsPlayer.pieces.find(piece => piece.position !== null).position += msg.room.dice;
+    // msg.room.turnsPlayer.pieces.find(piece => piece.position !== null).position += msg.room.dice;
+
+    sumPiecePosition(msg.room.turnsPlayer.pieces.find(piece => piece.position !== null));
 };
 
 function hasPiecesOnBoard (player) {
@@ -280,9 +320,13 @@ function autoMove() {
 
                 if(playerPiecesOnBoard(msg.room.turnsPlayer).length == 1 && msg.room.dice !== 6) {
         
-                    msg.room.turnsPlayer.pieces.reduce(function(prev, current) {
+                    // msg.room.turnsPlayer.pieces.reduce(function(prev, current) {
+                    //     return (prev.position > current.position) ? prev : current
+                    // }).position += msg.room.dice;
+
+                    sumPiecePosition(msg.room.turnsPlayer.pieces.reduce(function(prev, current) {
                         return (prev.position > current.position) ? prev : current
-                    }).position += msg.room.dice;
+                    }));
         
                     console.log(`${msg.room.turnsPlayer.name} tem apenas uma peça em jogo, ela foi movida automaticamente e a vez será passada`);
         
@@ -389,6 +433,98 @@ function sumPiecePosition (piece) {
             
         };
     } else {
-        piece.position += msg.room.dice;
+
+        movePieceCorrectly(piece);
+
+    };
+
+    if(piece.position > 52 && !piece.final) {
+        piece.position = piece.position - 52
+        piece.canEntryFinal = true;
+    };
+};
+
+function killAnotherPiece (pieceInMoving) {
+    if(hasPìeceWithPositionConflict(pieceInMoving)){
+        console.log("Tem peça pra matar")
+        pieceWithPositionConflict(pieceInMoving).final = false;   
+        pieceWithPositionConflict(pieceInMoving).canEntryFinal = false;   
+        pieceWithPositionConflict(pieceInMoving).position = null;
+        msg.room.killed = true;
+    } else {
+        return;
+    };
+};
+
+function reuneAllPieces () {
+    allPieces = [];
+    msg.room.players.forEach(player => {
+        player.pieces.forEach(piece => {
+            allPieces.push(piece);
+        })
+    })
+    return allPieces;
+};
+
+function hasPìeceWithPositionConflict (pieceInMoving) {
+    return reuneAllPieces().find(piece => piece.position === pieceInMoving.position && piece.playerID !== pieceInMoving.playerID && !isPieceInProtectedCell([1,8,13,20,25,32,37], pieceInMoving)) ? true : false;
+};
+
+function pieceWithPositionConflict (pieceInMoving) {
+    return reuneAllPieces().find(piece => piece.position === pieceInMoving.position && piece.playerID !== pieceInMoving.playerID && !isPieceInProtectedCell([1,8,13,20,25,32,37], pieceInMoving));
+};
+
+function isPieceInProtectedCell (protectedCells, piece) {
+	let result = false;
+    protectedCells.forEach( (cell) => {
+        if (piece.position == cell) {
+            result = true;
+        }
+    })
+    return result;
+}
+
+function movePieceCorrectly (piece) {
+    switch (msg.room.players.indexOf(msg.room.turnsPlayer)) {
+        case 0:
+                piece.position += msg.room.dice;
+                killAnotherPiece(piece);
+                if(piece.position > 51 && !piece.final) {
+                    piece.position = 100 + (piece.position - 51);
+                    piece.final = true;
+                }
+                if(piece.position > 105) console.log(`ACABOOOU O JOOOOGO!!! ${msg.room.turnsPlayer.name} VENCEEEEEU!!!`);
+
+            break;
+                
+        case 1:
+                piece.position += msg.room.dice;
+                killAnotherPiece(piece);
+                if(piece.position > 11 && piece.canEntryFinal) {
+                    piece.position = 105 + (piece.position - 11);
+                    piece.final = true;
+                }
+                if(piece.position > 110) console.log(`ACABOOOU O JOOOOGO!!! ${msg.room.turnsPlayer.name} VENCEEEEEU!!!`);
+            break;
+            
+        case 2:
+                piece.position += msg.room.dice;
+                killAnotherPiece(piece);
+                if(piece.position > 23 && piece.canEntryFinal) {
+                    piece.position = 110 + (piece.position - 23);
+                    piece.final = true;
+                }
+                if(piece.position > 115) console.log(`ACABOOOU O JOOOOGO!!! ${msg.room.turnsPlayer.name} VENCEEEEEU!!!`);
+            break;
+            
+        case 3:
+                piece.position += msg.room.dice;
+                killAnotherPiece(piece);
+                if(piece.position > 35 && piece.canEntryFinal) {
+                    piece.position = 115 + (piece.position - 35);
+                    piece.final = true;
+                }
+                if(piece.position > 120) console.log(`ACABOOOU O JOOOOGO!!! ${msg.room.turnsPlayer.name} VENCEEEEEU!!!`);
+            break;
     }
 };

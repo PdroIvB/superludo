@@ -18,36 +18,9 @@ let contador = 0;
 wsServer.on('connection', function connection(ws){
     console.log('a new client has connected');
 
-    let player = {
-        id: v4(),
-        connection: ws,
-        roomID: null,
-        pieces:[
-            {
-                id: 0,
-                position: null,
-                sprite: null
-            },
-            {
-                id: 1,
-                position: null,
-                sprite: null
-            },
-            {
-                id: 2,
-                position: null,
-                sprite: null
-            },
-            {
-                id: 3,
-                position: null,
-                sprite: null
-            }
-        ]
-    }
-
-    players.push(player);
-    sendIdentifier(player, ws);
+    
+    createPlayer(ws);
+    sendIdentifier(getPlayer(ws), ws);
     
     ws.on('message', function Incoming(message){
         let msg = JSON.parse(message);
@@ -118,13 +91,14 @@ wsServer.on('connection', function connection(ws){
                     uniqueRoom.dice = null;
                     uniqueRoom.diced = false;
 
-                    if(msg.room.dice == 6) {
+                    if(msg.room.dice == 6 || msg.room.killed) {
                         uniqueRoom.turn = (msg.room.turn - 1);
+                        uniqueRoom.killed = false;
                     } else {
                         uniqueRoom.turn = msg.room.turn;
                     }
 
-                    uniqueRoom.turnsPlayer.pieces = msg.room.turnsPlayer.pieces;
+                    uniqueRoom.players.forEach(serverPlayer => serverPlayer.pieces = msg.room.players.find(clientPlayer => msg.room.players.indexOf(clientPlayer) == uniqueRoom.players.indexOf(serverPlayer)).pieces);
 
                     askUpdateRoom(uniqueRoom.players);
 
@@ -213,6 +187,52 @@ function askUpdateRoom (players) {
             type: 'updateRoomRequest'
         }));
     });
+};
+
+function createPlayer(ws) {
+    let id = v4();
+
+    let player = {
+        id: id,
+        connection: ws,
+        roomID: null,
+        pieces:[
+            {
+                id: 0,
+                position: null,
+                sprite: null,
+                final: false,
+                canEntryFinal: false,
+                playerID: id
+            },
+            {
+                id: 1,
+                position: null,
+                sprite: null,
+                final: false,
+                canEntryFinal: false,
+                playerID: id
+            },
+            {
+                id: 2,
+                position: null,
+                sprite: null,
+                final: false,
+                canEntryFinal: false,
+                playerID: id
+            },
+            {
+                id: 3,
+                position: null,
+                sprite: null,
+                final: false,
+                canEntryFinal: false,
+                playerID: id
+            }
+        ]
+    }
+
+    players.push(player);
 };
 
 server.listen(port, () => {console.log(`server listening on port ${port}`)});
