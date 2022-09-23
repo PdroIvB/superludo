@@ -19,7 +19,6 @@ let contador = 0;
 wsServer.on('connection', function connection(ws){
     console.log('a new client has connected');
 
-    
     createPlayer(ws);
     sendIdentifier(getPlayer(ws), ws);
     
@@ -27,25 +26,23 @@ wsServer.on('connection', function connection(ws){
         let msg = JSON.parse(message);
 
         switch (msg.type) {
-            case 'initPlayer':
+            case 'setName':
 
                     let player = getPlayer(ws);
-                    
+
                     player.name = msg.playerName;
 
-                    insertPlayerInRoom(player);
-                    
-                    uniqueRoom = getRoom(player);
+                    identifyPlayerToRoom(player);
 
-                    if(isRoomFull(uniqueRoom)) {
-                        uniqueRoom.turn = 0;
-                        uniqueRoom.dice = null;
-                        uniqueRoom.diced = false;
-                        uniqueRoom.turnsPlayer = uniqueRoom.players[uniqueRoom.turn % 4];
-                    };
+                    sendPiecesToSelect(ws);
 
-                    console.log("chegamos no type room");
-                    askUpdateRoom(uniqueRoom.players);
+                break;
+
+            case 'selectedPiece':
+
+                    insertPLayerInRoomWithPieces(ws, msg.position);
+
+                    initGameWithRandom1stPlayer(ws, getRoom(getPlayer(ws)));
 
                 break;
             
@@ -64,13 +61,13 @@ wsServer.on('connection', function connection(ws){
             case 'dado':
 
                     console.log('chegamos no type dado');
-                
+
                     numDado = Math.floor(Math.random() * 6 + 1);
-
-                    console.log(`${uniqueRoom.turnsPlayer.name} tirou ${numDado} no dado!`)
-                    sendAllPlayersUpdateMsg(ws, `${uniqueRoom.turnsPlayer.name} tirou ${numDado} no dado!`)
-
+                    
                     uniqueRoom = getRoom(getPlayer(ws));
+                    
+                    sendAllPlayersUpdateMsg(ws, `${uniqueRoom.turnsPlayer.name} tirou ${numDado} no dado!`)
+                    
                     uniqueRoom.dice = numDado;
                     uniqueRoom.diced = true;
 
@@ -82,7 +79,7 @@ wsServer.on('connection', function connection(ws){
 
                     console.log("recebido info do move");
 
-                    sumPiecePosition(ws, getPiece(msg.piece));
+                    movePiece(ws, getPiece(msg.piece));
 
                     passTurn();
 
@@ -91,12 +88,13 @@ wsServer.on('connection', function connection(ws){
     });
 
     ws.on('close', function Closing () {
-        if(getPlayer(ws).name) {
+        if(getPlayer(ws).roomID) {
             getPlayer(ws).isBot = true;
 
             console.log(`Player ${getPlayer(ws).name} has disconnected from ${getRoom(getPlayer(ws)).id} room`);
 
-            askUpdateRoom(getRoom(getPlayer(ws)).players);
+            sendAllPlayersUpdateMsg(ws, `${getPlayer(ws).name} disconectou da sala.`)
+
         } else {
 
             console.log("A potencial player has disconnected before been inserted in a room");
@@ -104,6 +102,34 @@ wsServer.on('connection', function connection(ws){
     });
 });
 
+function selectWhereDontHavePlayers (players) {
+
+    let piecesThatCanBeChosen = [];
+
+    players.forEach((element,index) => {
+        if(!element) piecesThatCanBeChosen.push(index);
+    });
+
+    return piecesThatCanBeChosen;
+}
+
+function initGameWithRandom1stPlayer (ws, room) {
+
+    if(isRoomFull(room)) {
+
+        room.turn = Math.floor(Math.random() * 4);
+        sendAllPlayersUpdateMsg(ws, `${room.players[room.turn % 4].name} foi o jogador sorteado pra jogar primeiro!`);
+        room.dice = null;
+        room.diced = false;
+        room.turnsPlayer = room.players[room.turn % 4];
+
+    } else {
+
+        sendAllPlayersUpdateMsg(ws, `Aguardando outros jogadores entrarem para iniciar partida`);
+    }
+
+    askUpdateRoom(room.players);
+}
 
 function sendIdentifier(player, ws) {
     
@@ -115,35 +141,75 @@ function sendIdentifier(player, ws) {
     ws.send(JSON.stringify(identifier))
 }
 
-function insertPlayerInRoom (player) {
+function identifyPlayerToRoom (player) {
 
     if(rooms.length === 0 ) {
 
         let id = v4();
         createRoom(id);
         player.roomID = id;
-        rooms.find(room => room.id === id).players.push(player);
-
-    } else if (rooms[rooms.length - 1].players.length < 4) {
-
-        player.roomID = rooms[rooms.length - 1].id;
-        rooms[rooms.length - 1].players.push(player);
 
     } else {
 
-        let id = v4();
-        createRoom(id);
-        player.roomID = id;
-        rooms.find(room => room.id === id).players.push(player);
+        let playersCount = 0;
 
-    }
-}
+        rooms[rooms.length - 1].players.forEach(player => player != undefined ? playersCount++ : playersCount = playersCount);
+
+        if(playersCount < 4){
+
+            player.roomID = rooms[rooms.length - 1].id;
+
+        } else if (playersCount === 4) {
+
+            let id = v4();
+            createRoom(id);
+            player.roomID = id;
+        };
+    };
+};
+
+function insertPLayerInRoomWithPieces (ws, position) {
+    
+    if(isRoomFull(getRoom(getPlayer(ws)))){
+
+        sendThisPlayerMsg(ws, `4 jogadores já escolheram lugares pra sentar nessa sala, escolha suas peças novamente e vá para uma nova sala.`);
+
+        identifyPlayerToRoom(getPlayer(ws))
+
+        sendPiecesToSelect(ws);
+
+    } else {
+
+        if (rooms.find(room => room.id === getPlayer(ws).roomID).players[position]) {
+
+            sendThisPlayerMsg(ws, `Outro jogador já escolheu essas peças. Escolha alguma outra!`);
+
+            identifyPlayerToRoom(getPlayer(ws))
+
+            sendPiecesToSelect(ws);
+
+        } else {
+            
+            rooms.find(room => room.id === getPlayer(ws).roomID).players[position] = getPlayer(ws);
+        };
+    };
+};
+
+function sendPiecesToSelect (ws) {
+
+    let selectPiecesMsg = {
+        type: 'selectAPiece',
+        pieces: selectWhereDontHavePlayers(getRoom(getPlayer(ws)).players)
+    };
+
+    getPlayer(ws).connection.send(JSON.stringify(selectPiecesMsg))
+};
 
 function createRoom (id) {
     let room = {
         id: id,
         turn: null,
-        players: [],
+        players: [undefined,undefined,undefined,undefined],
         dice: null,
         diced: false
     }
@@ -164,14 +230,20 @@ function getPiece (msgPiece) {
 };
 
 function isRoomFull (room) {
-    return room.players.length === 4 ? true : false;
+    let playersCount = 0;
+
+    room.players.forEach(player => player != undefined ? playersCount++ : playersCount = playersCount);
+
+    return playersCount === 4 ? true : false;
 };
 
 function askUpdateRoom (players) {
     players.forEach(player => {
-        player.connection.send(JSON.stringify(sendUpdateRoomRequest = {
-            type: 'updateRoomRequest'
-        }));
+        if(player !== undefined){
+            player.connection.send(JSON.stringify(sendUpdateRoomRequest = {
+                type: 'updateRoomRequest'
+            }));
+        };
     });
 };
 
@@ -186,10 +258,12 @@ function sendOtherPlayersUpdateMsg (ws, updateMsg) {
 
 function sendAllPlayersUpdateMsg (ws, updateMsg) {
     getRoom(getPlayer(ws)).players.forEach(player => {
-        player.connection.send(JSON.stringify({
-            type: 'updateMsg',
-            updateMsg: `${updateMsg}`
-        }));
+        if(player !== undefined) {
+            player.connection.send(JSON.stringify({
+                type: 'updateMsg',
+                updateMsg: `${updateMsg}`
+            }))
+        };
     });
 };
 
@@ -214,7 +288,8 @@ function createPlayer(ws) {
                 sprite: null,
                 final: false,
                 canEntryFinal: false,
-                playerID: id
+                playerID: id,
+                finished: false
             },
             {
                 id: 1,
@@ -222,7 +297,8 @@ function createPlayer(ws) {
                 sprite: null,
                 final: false,
                 canEntryFinal: false,
-                playerID: id
+                playerID: id,
+                finished: false
             },
             {
                 id: 2,
@@ -230,7 +306,8 @@ function createPlayer(ws) {
                 sprite: null,
                 final: false,
                 canEntryFinal: false,
-                playerID: id
+                playerID: id,
+                finished: false
             },
             {
                 id: 3,
@@ -238,7 +315,8 @@ function createPlayer(ws) {
                 sprite: null,
                 final: false,
                 canEntryFinal: false,
-                playerID: id
+                playerID: id,
+                finished: false
             }
         ]
     }
@@ -273,8 +351,6 @@ function playOrPass (ws) {
 
         move(ws);
     } else {
-
-        console.log(`${uniqueRoom.turnsPlayer.name} não tem peças no tabuleiro e não tirou 6 no dado, a vez será passada`)
 
         sendAllPlayersUpdateMsg(ws, `${uniqueRoom.turnsPlayer.name} não tem peças no tabuleiro e não tirou 6 no dado, a vez será passada`);
 
@@ -315,7 +391,7 @@ function moveSinglePiece (ws) {
 
     sendAllPlayersUpdateMsg(ws, `auto moving single piece`)
 
-    sumPiecePosition(ws, uniqueRoom.turnsPlayer.pieces.find(piece => piece.position !== null));
+    movePiece(ws, uniqueRoom.turnsPlayer.pieces.find(piece => piece.position !== null));
 };
 
 function hasPiecesOnBoard (player) {
@@ -348,7 +424,7 @@ function autoMove() {
                     //     return (prev.position > current.position) ? prev : current
                     // }).position += uniqueRoom.dice;
 
-                    sumPiecePosition(ws, uniqueRoom.turnsPlayer.pieces.reduce(function(prev, current) {
+                    movePiece(ws, uniqueRoom.turnsPlayer.pieces.reduce(function(prev, current) {
                         return (prev.position > current.position) ? prev : current
                     }));
         
@@ -360,7 +436,7 @@ function autoMove() {
 
                     // uniqueRoom.turnsPlayer.pieces.find(piece => piece.position === null).position += uniqueRoom.dice;
 
-                    sumPiecePosition(ws, uniqueRoom.turnsPlayer.pieces.find(piece => piece.position === null));
+                    movePiece(ws, uniqueRoom.turnsPlayer.pieces.find(piece => piece.position === null));
 
                     passTurnForBot();
         
@@ -372,7 +448,7 @@ function autoMove() {
                     //     return (prev.position > current.position) ? prev : current
                     // }).position += uniqueRoom.dice;
 
-                    sumPiecePosition(ws, uniqueRoom.turnsPlayer.pieces.reduce(function(prev, current) {
+                    movePiece(ws, uniqueRoom.turnsPlayer.pieces.reduce(function(prev, current) {
                         return (prev.position > current.position) ? prev : current
                     }));
 
@@ -386,7 +462,7 @@ function autoMove() {
 
                 // uniqueRoom.turnsPlayer.pieces[0].position += uniqueRoom.dice;
 
-                sumPiecePosition(ws, uniqueRoom.turnsPlayer.pieces[0]);
+                movePiece(ws, uniqueRoom.turnsPlayer.pieces[0]);
 
                 passTurnForBot();
 
@@ -428,47 +504,6 @@ function isWhoIsGoingToPlayForBot () {
     }
 };
 
-function sumPiecePosition (ws, piece) {
-
-    if(!hasPiecesOnBoard(uniqueRoom.turnsPlayer)){
-        if(uniqueRoom.turnsPlayer === uniqueRoom.players[0]) {
-            piece.position = piece.position - 5 + uniqueRoom.dice;
-        } else if (uniqueRoom.turnsPlayer === uniqueRoom.players[1]) {
-            piece.position = piece.position + 7 + uniqueRoom.dice;
-            
-        } else if (uniqueRoom.turnsPlayer === uniqueRoom.players[2]) {
-            piece.position = piece.position + 19 + uniqueRoom.dice;
-            
-        } else if (uniqueRoom.turnsPlayer === uniqueRoom.players[3]) {
-            piece.position = piece.position + 31 + uniqueRoom.dice;
-            
-        };
-    } else if (piece.position === null) {
-        if(uniqueRoom.turnsPlayer === uniqueRoom.players[0]) {
-            piece.position = piece.position - 5 + uniqueRoom.dice;
-        } else if (uniqueRoom.turnsPlayer === uniqueRoom.players[1]) {
-            piece.position = piece.position + 7 + uniqueRoom.dice;
-            
-        } else if (uniqueRoom.turnsPlayer === uniqueRoom.players[2]) {
-            piece.position = piece.position + 19 + uniqueRoom.dice;
-            
-        } else if (uniqueRoom.turnsPlayer === uniqueRoom.players[3]) {
-            piece.position = piece.position + 31 + uniqueRoom.dice;
-            
-        };
-    } else {
-
-        movePieceCorrectly(ws, piece);
-
-    };
-
-    if(piece.position > 52 && !piece.final) {
-        piece.position = piece.position - 52
-        piece.canEntryFinal = true;
-        killAnotherPiece(ws, piece);
-    };
-};
-
 function killAnotherPiece (ws, pieceInMoving) {
     if(hasPìeceWithPositionConflict(pieceInMoving)){
 
@@ -497,11 +532,11 @@ function reuneAllPieces () {
 };
 
 function hasPìeceWithPositionConflict (pieceInMoving) {
-    return reuneAllPieces().find(piece => piece.position === pieceInMoving.position && piece.playerID !== pieceInMoving.playerID && !isPieceInProtectedCell([1,8,13,20,25,32,37], pieceInMoving)) ? true : false;
+    return reuneAllPieces().find(piece => piece.position === pieceInMoving.position && piece.playerID !== pieceInMoving.playerID && !isPieceInProtectedCell([1,9,14,22,27,35,40,48], pieceInMoving)) ? true : false;
 };
 
 function pieceWithPositionConflict (pieceInMoving) {
-    return reuneAllPieces().find(piece => piece.position === pieceInMoving.position && piece.playerID !== pieceInMoving.playerID && !isPieceInProtectedCell([1,8,13,20,25,32,37], pieceInMoving));
+    return reuneAllPieces().find(piece => piece.position === pieceInMoving.position && piece.playerID !== pieceInMoving.playerID && !isPieceInProtectedCell([1,9,14,22,27,35,40,48], pieceInMoving));
 };
 
 function isPieceInProtectedCell (protectedCells, piece) {
@@ -514,47 +549,157 @@ function isPieceInProtectedCell (protectedCells, piece) {
     return result;
 }
 
-function movePieceCorrectly (ws, piece) {
+function movePiece (ws, piece) {
+
+    if(!hasPiecesOnBoard(uniqueRoom.turnsPlayer)){
+        if(uniqueRoom.turnsPlayer === uniqueRoom.players[0]) {
+            piece.position = piece.position - 5 + uniqueRoom.dice;
+        } else if (uniqueRoom.turnsPlayer === uniqueRoom.players[1]) {
+            piece.position = piece.position + 8 + uniqueRoom.dice;
+            
+        } else if (uniqueRoom.turnsPlayer === uniqueRoom.players[2]) {
+            piece.position = piece.position + 21 + uniqueRoom.dice;
+            
+        } else if (uniqueRoom.turnsPlayer === uniqueRoom.players[3]) {
+            piece.position = piece.position + 34 + uniqueRoom.dice;
+            
+        };
+    } else if (piece.position === null) {
+        if(uniqueRoom.turnsPlayer === uniqueRoom.players[0]) {
+            piece.position = piece.position - 5 + uniqueRoom.dice;
+        } else if (uniqueRoom.turnsPlayer === uniqueRoom.players[1]) {
+            piece.position = piece.position + 8 + uniqueRoom.dice;
+            
+        } else if (uniqueRoom.turnsPlayer === uniqueRoom.players[2]) {
+            piece.position = piece.position + 21 + uniqueRoom.dice;
+            
+        } else if (uniqueRoom.turnsPlayer === uniqueRoom.players[3]) {
+            piece.position = piece.position + 34 + uniqueRoom.dice;
+            
+        };
+    } else {
+
+        sumPiecePosition(piece);
+    };
+
+    if(piece.position > 52 && !piece.final) {
+        piece.position = piece.position - 52
+        piece.canEntryFinal = true;
+    };
+
+    killAnotherPiece(ws, piece);
+
+    if(getRoom(getPlayer(ws)).players.find(player => player.pieces.filter(piece=> piece.finished === true).length === 4)) {
+        sendAllPlayersUpdateMsg(ws, `${getPlayer(ws).players.find(player => player.pieces.filter(piece=> piece.finished === true).length === 4).name} VENCEU O JOGO`);
+    };
+};
+
+function sumPiecePosition (piece) {
     switch (uniqueRoom.players.indexOf(uniqueRoom.turnsPlayer)) {
         case 0:
-                piece.position += uniqueRoom.dice;
-                killAnotherPiece(ws, piece);
-                if(piece.position > 51 && !piece.final) {
+
+                if(piece.position > 100) {
+                    //Aqui é se está na reta final
+
+                    if(uniqueRoom.dice <= (piece.position - 106)) {
+
+                        piece.position += uniqueRoom.dice;
+                    } else break;
+
+                } else if(piece.position > 51 && !piece.final) {
+                    //Aqui é se precisar entrar na reta final
+
                     piece.position = 100 + (piece.position - 51);
                     piece.final = true;
-                }
-                if(piece.position > 105) console.log(`ACABOOOU O JOOOOGO!!! ${uniqueRoom.turnsPlayer.name} VENCEEEEEU!!!`);
+                } else if(piece.position > 105) {
+                    //Aqui é se terminou
 
+                    piece.finished = true;
+                    piece.position = 0;
+                } else if (piece.position !== 0 ) {
+                    //Aqui é o 'padrão'
+
+                    piece.position += uniqueRoom.dice;
+                } ;
             break;
-                
+
         case 1:
-                piece.position += uniqueRoom.dice;
-                killAnotherPiece(ws, piece);
-                if(piece.position > 11 && piece.canEntryFinal) {
-                    piece.position = 105 + (piece.position - 11);
+
+                if(piece.position > 105) {
+                    //Aqui é se está na reta final
+
+                    if(uniqueRoom.dice <= (piece.position - 111)) {
+
+                        piece.position += uniqueRoom.dice;
+                    } else break;
+
+                } else if(piece.position > 12 && piece.canEntryFinal) {
+                    //Aqui é se precisar entrar na reta final
+
+                    piece.position = 105 + (piece.position - 51);
                     piece.final = true;
-                }
-                if(piece.position > 110) console.log(`ACABOOOU O JOOOOGO!!! ${uniqueRoom.turnsPlayer.name} VENCEEEEEU!!!`);
+                } else if(piece.position > 110) {
+                    //Aqui é se terminou
+
+                    piece.finished = true;
+                    piece.position = 0;
+                } else if (piece.position !== 0 ) {
+                    //Aqui é o 'padrão'
+
+                    piece.position += uniqueRoom.dice;
+                } ;
             break;
-            
+
         case 2:
+            if(piece.position > 110) {
+                //Aqui é se está na reta final
+
+                if(uniqueRoom.dice <= (piece.position - 116)) {
+
+                    piece.position += uniqueRoom.dice;
+                } else break;
+
+            } else if(piece.position > 25 && piece.canEntryFinal) {
+                //Aqui é se precisar entrar na reta final
+
+                piece.position = 110 + (piece.position - 51);
+                piece.final = true;
+            } else if(piece.position > 115) {
+                //Aqui é se terminou
+
+                piece.finished = true;
+                piece.position = 0;
+            } else if (piece.position !== 0 ) {
+                //Aqui é o 'padrão'
+
                 piece.position += uniqueRoom.dice;
-                killAnotherPiece(ws, piece);
-                if(piece.position > 23 && piece.canEntryFinal) {
-                    piece.position = 110 + (piece.position - 23);
-                    piece.final = true;
-                }
-                if(piece.position > 115) console.log(`ACABOOOU O JOOOOGO!!! ${uniqueRoom.turnsPlayer.name} VENCEEEEEU!!!`);
+            } ;
             break;
             
         case 3:
+            if(piece.position > 115) {
+                //Aqui é se está na reta final
+
+                if(uniqueRoom.dice <= (piece.position - 121)) {
+
+                    piece.position += uniqueRoom.dice;
+                } else break;
+
+            } else if(piece.position > 38 && piece.canEntryFinal) {
+                //Aqui é se precisar entrar na reta final
+
+                piece.position = 115 + (piece.position - 51);
+                piece.final = true;
+            } else if(piece.position > 120) {
+                //Aqui é se terminou
+
+                piece.finished = true;
+                piece.position = 0;
+            } else if (piece.position !== 0 ) {
+                //Aqui é o 'padrão'
+
                 piece.position += uniqueRoom.dice;
-                killAnotherPiece(ws, piece);
-                if(piece.position > 35 && piece.canEntryFinal) {
-                    piece.position = 115 + (piece.position - 35);
-                    piece.final = true;
-                }
-                if(piece.position > 120) console.log(`ACABOOOU O JOOOOGO!!! ${uniqueRoom.turnsPlayer.name} VENCEEEEEU!!!`);
+            } ;
             break;
     }
 };

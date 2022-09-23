@@ -4,7 +4,7 @@ let diceBtn = document.getElementById('diceBtn');
 let initBtn = document.getElementById('initBtn');
 diceBtn.addEventListener('click', dice);
 diceBtn.style.display = 'none';
-initBtn.addEventListener('click', init);
+initBtn.addEventListener('click', sendName);
 let playerID;
 let msg;
 let allPieces;
@@ -25,6 +25,9 @@ socketClient.onmessage = (event) => {
             break;
 
         case 'roomUpdate':
+
+                document.getElementById("piecesToSelect").innerHTML = "";
+
                 console.log('room just when arrived: ', msg.room);
 
                 room = msg.room;
@@ -32,10 +35,8 @@ socketClient.onmessage = (event) => {
                 if(msg.room.turn !== null) {
 
                     turn();
+                    diceBtn.style.display = 'flex';
 
-                } else {
-
-                    console.log('Aguardando outros jogadores entrarem para iniciar a partida!');
                 };
 
                 renderAll();
@@ -59,18 +60,49 @@ socketClient.onmessage = (event) => {
 
         case 'updateMsg':
 
-                console.log(`${msg.updateMsg}`)
+                console.log(msg.updateMsg);
+
+            break;
+
+        case 'selectAPiece':
+                document.getElementById("piecesToSelect").innerHTML = "";
+
+                console.log(`Selecione uma das peças: `, msg.pieces);
+
+                renderPieces(msg.pieces);
 
             break;
     };
 };
 
-function init() {
+function renderPieces (arrPieces) {
+
+    arrPieces.forEach((piecePosition) => {
+        if(piecePosition || piecePosition === 0) {
+
+            let piece = document.createElement('div');
+
+            piece.setAttribute('class', 'divs');
+            piece.innerHTML = `${piecePosition}`;
+
+            piece.addEventListener('click', () => {
+                socketClient.send(JSON.stringify({
+                    type: 'selectedPiece',
+                    position: piecePosition
+                }));
+            });
+
+            document.getElementById("piecesToSelect").appendChild(piece);
+        };
+    });
+};
+
+function sendName() {
 
     let nameToSend = !name.value ? `JogadorSemNome` : name.value;
 
     let msgInit = {
-        type: 'initPlayer',
+        type: 'setName',
         playerName: nameToSend,
         playerID: playerID
     }
@@ -80,7 +112,6 @@ function init() {
     name.style.display = 'none';
     initBtn.disabled = true;
     initBtn.style.display = 'none';
-    diceBtn.style.display = 'flex';
 };
 
 function turn () {
@@ -123,28 +154,28 @@ function renderAll() {
         document.getElementById('table').appendChild(cell);
     };
 
-    for(let i = 101; i <= 106; i++) {
+    for(let i = 101; i <= 105; i++) {
         let finalCell = document.createElement('div');
         finalCell.setAttribute('class', 'finalCells');
         finalCell.setAttribute('id', `casaFinal-${i}`);
         finalCell.innerHTML = `casaFinal-${i}`;
         document.getElementById('retaFinal-0').appendChild(finalCell);
     };
-    for(let i = 107; i <= 111; i++) {
+    for(let i = 106; i <= 110; i++) {
         let finalCell = document.createElement('div');
         finalCell.setAttribute('class', 'finalCells');
         finalCell.setAttribute('id', `casaFinal-${i}`);
         finalCell.innerHTML = `casaFinal-${i}`;
         document.getElementById('retaFinal-1').appendChild(finalCell);
     };
-    for(let i = 112; i <= 116; i++) {
+    for(let i = 111; i <= 115; i++) {
         let finalCell = document.createElement('div');
         finalCell.setAttribute('class', 'finalCells');
         finalCell.setAttribute('id', `casaFinal-${i}`);
         finalCell.innerHTML = `casaFinal-${i}`;
         document.getElementById('retaFinal-2').appendChild(finalCell);
     };
-    for(let i = 117; i <= 121; i++) {
+    for(let i = 116; i <= 120; i++) {
         let finalCell = document.createElement('div');
         finalCell.setAttribute('class', 'finalCells');
         finalCell.setAttribute('id', `casaFinal-${i}`);
@@ -153,37 +184,40 @@ function renderAll() {
     };
     
     msg.room.players.forEach( player => {
-        let playerConteiner = document.createElement('div');
-        playerConteiner.setAttribute('class', 'playerConteiner');
-        playerConteiner.setAttribute('id', `${player.name}Conteiner`);
-        document.getElementById('casinhas').appendChild(playerConteiner);
-        let playerNameP = document.createElement('p');
-        playerNameP.innerHTML = player.name;
-        playerConteiner.appendChild(playerNameP);
+        if(player){
 
-        player.pieces.forEach(piece => {
-            let playerPiece = document.createElement('div');
-            playerPiece.setAttribute('class', 'piece');
-            playerPiece.setAttribute('id', `${player.name}-${piece.id}`);
-            playerPiece.innerHTML = playerPiece.getAttribute('id');
-            
-            playerPiece.setAttribute('data-playerid', `${player.id}`);
-            
-            if(piece.position !== null) {                
-                if(piece.position > 100){
-
-                    document.getElementById(`casaFinal-${piece.position}`).appendChild(playerPiece);
-
+            let playerConteiner = document.createElement('div');
+            playerConteiner.setAttribute('class', 'playerConteiner');
+            playerConteiner.setAttribute('id', `${player.name}Conteiner`);
+            document.getElementById('casinhas').appendChild(playerConteiner);
+            let playerNameP = document.createElement('p');
+            playerNameP.innerHTML = player.name;
+            playerConteiner.appendChild(playerNameP);
+    
+            player.pieces.forEach(piece => {
+                let playerPiece = document.createElement('div');
+                playerPiece.setAttribute('class', 'piece');
+                playerPiece.setAttribute('id', `${player.name}-${piece.id}`);
+                playerPiece.innerHTML = playerPiece.getAttribute('id');
+                
+                playerPiece.setAttribute('data-playerid', `${player.id}`);
+                
+                if(piece.position !== null) {                
+                    if(piece.position > 100){
+    
+                        document.getElementById(`casaFinal-${piece.position}`).appendChild(playerPiece);
+    
+                    } else {
+    
+                        document.getElementById(`casa${piece.position}`).appendChild(playerPiece);
+                    }
+    
                 } else {
-
-                    document.getElementById(`casa${piece.position}`).appendChild(playerPiece);
-                }
-
-            } else {
-
-                document.getElementById(`${player.name}Conteiner`).appendChild(playerPiece)
-            };
-        });
+    
+                    document.getElementById(`${player.name}Conteiner`).appendChild(playerPiece)
+                };
+            });
+        }
     })
 };
 
@@ -202,7 +236,7 @@ function moving (e) {
         let pieceData =  e.target.attributes.id.value.split('-');
         let piece = room.players.find(player => player.id === msg.playerID).pieces.find(piece => piece.id == pieceData[1]);
 
-        if(piece.position !== null || msg.dice == 6){
+        if(piece.position !== null || msg.dice == 6 || piece.position !== 0 ){
 
             socketClient.send(JSON.stringify({
                 type: 'move',
