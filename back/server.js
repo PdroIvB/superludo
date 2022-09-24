@@ -511,8 +511,8 @@ function killAnotherPiece (ws, pieceInMoving) {
 
         sendThisPlayerMsg(ws, `Você matou uma peça de ${uniqueRoom.players.find(player => player.id ===pieceWithPositionConflict(pieceInMoving).playerID).name}! Hahaha`)
 
-        pieceWithPositionConflict(pieceInMoving).final = false;   
-        pieceWithPositionConflict(pieceInMoving).canEntryFinal = false;   
+        pieceWithPositionConflict(pieceInMoving).final = false;
+        pieceWithPositionConflict(pieceInMoving).canEntryFinal = false;
         pieceWithPositionConflict(pieceInMoving).position = null;
 
         uniqueRoom.killed = true;
@@ -581,12 +581,13 @@ function movePiece (ws, piece) {
 
         sumPiecePosition(piece);
     };
-
+    
     if(piece.position > 52 && !piece.final) {
         piece.position = piece.position - 52
         piece.canEntryFinal = true;
+        piece.final = true;
     };
-
+    
     killAnotherPiece(ws, piece);
 
     if(getRoom(getPlayer(ws)).players.find(player => player.pieces.filter(piece=> piece.finished === true).length === 4)) {
@@ -636,7 +637,7 @@ function sumPiecePosition (piece) {
                 } else if(piece.position > 12 && piece.canEntryFinal) {
                     //Aqui é se precisar entrar na reta final
 
-                    piece.position = 105 + (piece.position - 51);
+                    piece.position = 105 + (piece.position - 12);
                     piece.final = true;
                 } else if(piece.position > 110) {
                     //Aqui é se terminou
@@ -662,7 +663,7 @@ function sumPiecePosition (piece) {
             } else if(piece.position > 25 && piece.canEntryFinal) {
                 //Aqui é se precisar entrar na reta final
 
-                piece.position = 110 + (piece.position - 51);
+                piece.position = 110 + (piece.position - 25);
                 piece.final = true;
             } else if(piece.position > 115) {
                 //Aqui é se terminou
@@ -688,7 +689,7 @@ function sumPiecePosition (piece) {
             } else if(piece.position > 38 && piece.canEntryFinal) {
                 //Aqui é se precisar entrar na reta final
 
-                piece.position = 115 + (piece.position - 51);
+                piece.position = 115 + (piece.position - 38);
                 piece.final = true;
             } else if(piece.position > 120) {
                 //Aqui é se terminou
