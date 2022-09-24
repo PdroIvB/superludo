@@ -330,7 +330,7 @@ function playOrPass (ws) {
 
     if(hasPiecesOnBoard(uniqueRoom.turnsPlayer)) {
 
-        if(playerPiecesOnBoard(uniqueRoom.turnsPlayer).length == 1 && uniqueRoom.dice !== 6) {
+        if(playerPiecesOnBoard(uniqueRoom.turnsPlayer).length === 1 && uniqueRoom.dice !== 6) {
 
             moveSinglePiece(ws);
 
@@ -338,7 +338,7 @@ function playOrPass (ws) {
 
             passTurn();
 
-        } else if(playerPiecesOnBoard(uniqueRoom.turnsPlayer).length == 1 && uniqueRoom.dice === 6) { 
+        } else if(playerPiecesOnBoard(uniqueRoom.turnsPlayer).length === 1 && uniqueRoom.dice === 6) { 
 
             move(ws);
 
@@ -395,11 +395,11 @@ function moveSinglePiece (ws) {
 };
 
 function hasPiecesOnBoard (player) {
-    return player.pieces.find(piece => piece.position !== null) ? true : false;
+    return player.pieces.find(piece => piece.position !== null && piece.finished !== true) ? true : false;
 };
 
 function playerPiecesOnBoard(player) {
-    return player.pieces.filter(piece => piece.position !== null);
+    return player.pieces.filter(piece => piece.position !== null && piece.finished !== true);
 };
 
 function autoMove() {
@@ -613,8 +613,13 @@ function sumPiecePosition (piece) {
                             piece.position = 0;
                         }
 
-                    } else break;
+                    } else {
 
+                        sendAllPlayersUpdateMsg(ws, `${uniqueRoom.turnsPlayer.name}, para terminar, você tem que tirar um número menor ou igual as casas que faltam!`);
+
+                        break;
+                    };
+                    
                 } else if(((piece.position + uniqueRoom.dice) > 51) && !piece.final) {
                     //Aqui é se precisar entrar na reta final
 
