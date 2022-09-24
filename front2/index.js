@@ -16,6 +16,10 @@ socketClient.onopen = () => {
     let token = localStorage.getItem('token');
 
     if(token) {
+        name.value = '';
+        name.style.display = 'none';
+        initBtn.disabled = true;
+        initBtn.style.display = 'none';
         socketClient.send(JSON.stringify({
             type: 'reconnection',
             token: token //enviar o token do front pro back por aqui
@@ -28,7 +32,7 @@ socketClient.onmessage = (event) => {
 
     switch (msg.type) {
         case 'identifier':
-
+                console.log("Chegou aqui.");
                 playerID = msg.token;
 
                 localStorage.setItem('token', msg.token);
@@ -135,7 +139,6 @@ function sendName() {
     let msgInit = {
         type: 'setName',
         playerName: nameToSend,
-        playerID: playerID
     }
 
     socketClient.send(JSON.stringify(msgInit));

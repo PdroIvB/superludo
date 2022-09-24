@@ -28,7 +28,7 @@ wsServer.on('connection', function connection(ws){
 
         switch (msg.type) {
             case 'initPlayer':
-
+                    console.log("Entrou no initPlayer");
                     createPlayer(ws);
                     sendIdentifier(getPlayer(ws));
 
@@ -94,18 +94,29 @@ wsServer.on('connection', function connection(ws){
                 break;
 
             case 'reconnection':
-
-                if(playersWithToken.find(playerWithToken => playerWithToken.token === msg.token)){
-
-                    let player = playersWithToken.find(playerWithToken => playerWithToken.token === msg.token).player;
+                console.log("Entrou no reconnection");
+                playersWithToken.forEach(playerWithToken => {
+                    if (playerWithToken.token === msg.token) {
+                        playerWithToken.player.connection = ws;
+                    }
+                })
+                let tempPlayer = getPlayer(ws);
+                console.log("erro connection: ", tempPlayer);
+                if(tempPlayer){
             
-                    player.connection = ws;
-                    player.isBot = false;
+                    // tempPlayer.connection = ws;
+                    tempPlayer.isBot = false;
 
-                    sendOtherPlayersUpdateMsg(ws, `${player.name} se reconectou!`);
+                    console.log("Erro do token: ", tempPlayer);
+
+                    sendOtherPlayersUpdateMsg(ws, `${tempPlayer.name} se reconectou!`);
 
                     sendThisPlayerMsg(ws, `Você se reconectou com sucesso!`);
-                    askUpdateRoom(ws);
+                    // let roomPlayers = getRoom(getPlayer(ws)).players;
+                    
+                    ws.send(JSON.stringify(sendUpdateRoomRequest = {
+                        type: 'updateRoomRequest'
+                    }));
             
                 } else {
             
@@ -162,13 +173,13 @@ function initGameWithRandom1stPlayer (ws, room) {
 }
 
 function sendIdentifier(player) {
-    
+    let currentPlayer = playersWithToken.find(playerWithToken => playerWithToken.player.connection === player.connection);
     let identifier = {
         type: 'identifier',
-        token: playersWithToken.find(playerWithToken => playerWithToken.player === player).token
+        token: currentPlayer.token
     };
 
-    ws.send(JSON.stringify(identifier))
+    player.connection.send(JSON.stringify(identifier))
 }
 
 function identifyPlayerToRoom (player) {
@@ -252,7 +263,8 @@ function getRoom (player) {
 };
 
 function getPlayer (ws) {
-    return playersWithToken.find(playerWithToken => playerWithToken.player.connection === ws);
+    let currentPlayer = playersWithToken.find(playerWithToken => playerWithToken.player.connection === ws)
+    return currentPlayer.player;
 }
 
 function getPiece (msgPiece) {
@@ -268,6 +280,7 @@ function isRoomFull (room) {
 };
 
 function askUpdateRoom (players) {
+    console.log("UpdateRoom", players);
     players.forEach(player => {
         if(player !== undefined){
             player.connection.send(JSON.stringify(sendUpdateRoomRequest = {
@@ -278,7 +291,12 @@ function askUpdateRoom (players) {
 };
 
 function sendOtherPlayersUpdateMsg (ws, updateMsg) {
-    getRoom(getPlayer(ws)).players.filter(player => player.connection !== ws).forEach(player => {
+    let roomPlayers = getRoom(getPlayer(ws)).players.filter(player => {
+        if (player && player.connection !== ws) {
+            return player;
+        }
+    });
+    roomPlayers.forEach(player => {
         player.connection.send(JSON.stringify({
             type: 'updateMsg',
             updateMsg: `${updateMsg}`
@@ -287,6 +305,7 @@ function sendOtherPlayersUpdateMsg (ws, updateMsg) {
 };
 
 function sendAllPlayersUpdateMsg (ws, updateMsg) {
+    // console.log("verifyError: ", getRoom(getPlayer(ws)));
     getRoom(getPlayer(ws)).players.forEach(player => {
         if(player !== undefined) {
             player.connection.send(JSON.stringify({
@@ -352,9 +371,10 @@ function createPlayer(ws) {
     }
 
     let playerWithToken = {
-        token: 'siuvjerivb', //gerar o token aqui
+        token: v4(), //gerar o token aqui
         player: player
     }
+    console.log("error token: ", playerWithToken);
 
     playersWithToken.push(playerWithToken);
 };
