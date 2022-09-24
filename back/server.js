@@ -360,19 +360,20 @@ function playOrPass (ws) {
 
 function passTurn () {
 
-        uniqueRoom.turn++
+    uniqueRoom.turn++
 
-        if(uniqueRoom.dice == 6 || uniqueRoom.killed) {
-            --uniqueRoom.turn
-            uniqueRoom.killed = false;
-        }
+    if(uniqueRoom.dice == 6 || uniqueRoom.killed || uniqueRoom.justFinishedPiece) {
+        --uniqueRoom.turn
+        uniqueRoom.killed = false;
+        uniqueRoom.justFinishedPiece = false;
+    }
 
-        uniqueRoom.turnsPlayer = uniqueRoom.players[uniqueRoom.turn % 4];
-        uniqueRoom.dice = null;
-        uniqueRoom.diced = false;
+    uniqueRoom.turnsPlayer = uniqueRoom.players[uniqueRoom.turn % 4];
+    uniqueRoom.dice = null;
+    uniqueRoom.diced = false;
 
-        askUpdateRoom(uniqueRoom.players);
-    };
+    askUpdateRoom(uniqueRoom.players);
+};
 
 function move (ws) {
 
@@ -391,7 +392,7 @@ function moveSinglePiece (ws) {
 
     sendAllPlayersUpdateMsg(ws, `auto moving single piece`)
 
-    movePiece(ws, uniqueRoom.turnsPlayer.pieces.find(piece => piece.position !== null));
+    movePiece(ws, uniqueRoom.turnsPlayer.pieces.find(piece => piece.position !== null && piece.finished !== true));
 };
 
 function hasPiecesOnBoard (player) {
@@ -476,7 +477,7 @@ function autoMove() {
     } else {
         console.log("aguardando a jogada do bot");
     }
-}
+};
 
 function passTurnForBot () {
     if(isWhoIsGoingToPlayForBot()) {
@@ -532,11 +533,11 @@ function reuneAllPieces () {
 };
 
 function hasPìeceWithPositionConflict (pieceInMoving) {
-    return reuneAllPieces().find(piece => piece.position === pieceInMoving.position && piece.playerID !== pieceInMoving.playerID && !isPieceInProtectedCell([1,9,14,22,27,35,40,48], pieceInMoving)) ? true : false;
+    return reuneAllPieces().find(piece => piece.position === pieceInMoving.position && piece.playerID !== pieceInMoving.playerID && !isPieceInProtectedCell([0,1,9,14,22,27,35,40,48], pieceInMoving)) ? true : false;
 };
 
 function pieceWithPositionConflict (pieceInMoving) {
-    return reuneAllPieces().find(piece => piece.position === pieceInMoving.position && piece.playerID !== pieceInMoving.playerID && !isPieceInProtectedCell([1,9,14,22,27,35,40,48], pieceInMoving));
+    return reuneAllPieces().find(piece => piece.position === pieceInMoving.position && piece.playerID !== pieceInMoving.playerID && !isPieceInProtectedCell([0,1,9,14,22,27,35,40,48], pieceInMoving));
 };
 
 function isPieceInProtectedCell (protectedCells, piece) {
@@ -547,7 +548,7 @@ function isPieceInProtectedCell (protectedCells, piece) {
         }
     })
     return result;
-}
+};
 
 function movePiece (ws, piece) {
 
@@ -627,12 +628,7 @@ function sumPiecePosition (piece) {
                     piece.position = 100 + (piece.position - 51);
                     piece.final = true;
 
-                    if(piece.position > 105) {
-                        //Aqui é se terminou
-    
-                        piece.finished = true;
-                        piece.position = 0;
-                    }
+                    finalizePiece(piece);
 
                 } else if (piece.position !== 0 ) {
                     //Aqui é o 'padrão'
@@ -650,12 +646,7 @@ function sumPiecePosition (piece) {
 
                         piece.position += uniqueRoom.dice;
 
-                        if(piece.position > 110) {
-                            //Aqui é se terminou
-        
-                            piece.finished = true;
-                            piece.position = 0;
-                        }
+                        finalizePiece(piece);
 
                     } else break;
 
@@ -666,12 +657,7 @@ function sumPiecePosition (piece) {
                     piece.position = 105 + (piece.position - 12);
                     piece.final = true;
 
-                    if(piece.position > 110) {
-                        //Aqui é se terminou
-    
-                        piece.finished = true;
-                        piece.position = 0;
-                    }
+                    finalizePiece(piece);
 
                 } else if (piece.position !== 0 ) {
                     //Aqui é o 'padrão'
@@ -681,6 +667,7 @@ function sumPiecePosition (piece) {
             break;
 
         case 2:
+
             if(piece.position > 110) {
                 //Aqui é se está na reta final
 
@@ -688,12 +675,7 @@ function sumPiecePosition (piece) {
 
                     piece.position += uniqueRoom.dice;
 
-                    if(piece.position > 115) {
-                        //Aqui é se terminou
-        
-                        piece.finished = true;
-                        piece.position = 0;
-                    } 
+                    finalizePiece(piece);
 
                 } else break;
 
@@ -704,12 +686,7 @@ function sumPiecePosition (piece) {
                 piece.position = 110 + (piece.position - 25);
                 piece.final = true;
 
-                if(piece.position > 115) {
-                    //Aqui é se terminou
-    
-                    piece.finished = true;
-                    piece.position = 0;
-                } 
+                finalizePiece(piece);
 
             } else if (piece.position !== 0 ) {
                 //Aqui é o 'padrão'
@@ -719,6 +696,7 @@ function sumPiecePosition (piece) {
             break;
             
         case 3:
+
             if(piece.position > 115) {
                 //Aqui é se está na reta final
 
@@ -726,12 +704,7 @@ function sumPiecePosition (piece) {
 
                     piece.position += uniqueRoom.dice;
 
-                    if(piece.position > 120) {
-                        //Aqui é se terminou
-        
-                        piece.finished = true;
-                        piece.position = 0;
-                    }
+                    finalizePiece(piece);
 
                 } else break;
 
@@ -742,12 +715,7 @@ function sumPiecePosition (piece) {
                 piece.position = 115 + (piece.position - 38);
                 piece.final = true;
 
-                if(piece.position > 120) {
-                    //Aqui é se terminou
-    
-                    piece.finished = true;
-                    piece.position = 0;
-                }
+                finalizePiece(piece);
 
             } else if (piece.position !== 0 ) {
                 //Aqui é o 'padrão'
@@ -756,6 +724,58 @@ function sumPiecePosition (piece) {
             } ;
             break;
     }
+};
+
+function finalizePiece(piece){
+    switch (uniqueRoom.players.indexOf(uniqueRoom.turnsPlayer)) {
+        case 0:
+
+            if(piece.position > 105) {
+                //Aqui é se terminou
+
+                piece.finished = true;
+                piece.position = 0;
+                uniqueRoom.justFinishedPiece = true;
+            }
+
+            break;
+
+        case 1:
+
+            if(piece.position > 110) {
+                //Aqui é se terminou
+
+                piece.finished = true;
+                piece.position = 0;
+                uniqueRoom.justFinishedPiece = true;
+            }
+
+            break;
+        
+        case 2:
+
+            if(piece.position > 115) {
+                //Aqui é se terminou
+
+                piece.finished = true;
+                piece.position = 0;
+                uniqueRoom.justFinishedPiece = true;
+            } 
+
+            break;
+
+        case 3:
+
+            if(piece.position > 120) {
+                //Aqui é se terminou
+
+                piece.finished = true;
+                piece.position = 0;
+                uniqueRoom.justFinishedPiece = true;
+            }
+
+            break;
+    };
 };
 
 server.listen(port, () => {console.log(`server listening on port ${port}`)});
