@@ -602,9 +602,17 @@ function sumPiecePosition (piece) {
                 if(piece.position > 100) {
                     //Aqui é se está na reta final
 
-                    if(uniqueRoom.dice <= (piece.position - 106)) {
+                    if(uniqueRoom.dice <= (106 - piece.position)) {
 
                         piece.position += uniqueRoom.dice;
+
+                        if(piece.position > 105) {
+                            //Aqui é se terminou
+        
+                            piece.finished = true;
+                            piece.position = 0;
+                        }
+
                     } else break;
 
                 } else if(((piece.position + uniqueRoom.dice) > 51) && !piece.final) {
@@ -613,11 +621,14 @@ function sumPiecePosition (piece) {
                     piece.position += uniqueRoom.dice;
                     piece.position = 100 + (piece.position - 51);
                     piece.final = true;
-                } else if(piece.position > 105) {
-                    //Aqui é se terminou
 
-                    piece.finished = true;
-                    piece.position = 0;
+                    if(piece.position > 105) {
+                        //Aqui é se terminou
+    
+                        piece.finished = true;
+                        piece.position = 0;
+                    }
+
                 } else if (piece.position !== 0 ) {
                     //Aqui é o 'padrão'
 
@@ -630,22 +641,33 @@ function sumPiecePosition (piece) {
                 if(piece.position > 105) {
                     //Aqui é se está na reta final
 
-                    if(uniqueRoom.dice <= (piece.position - 111)) {
+                    if(uniqueRoom.dice <= (111 - piece.position)) {
 
                         piece.position += uniqueRoom.dice;
+
+                        if(piece.position > 110) {
+                            //Aqui é se terminou
+        
+                            piece.finished = true;
+                            piece.position = 0;
+                        }
+
                     } else break;
 
-                } else if((piece.position + uniqueRoom.dice) > 12 && piece.canEntryFinal) {
+                } else if(((piece.position + uniqueRoom.dice) > 12) && piece.canEntryFinal) {
                     //Aqui é se precisar entrar na reta final
 
                     piece.position += uniqueRoom.dice;
                     piece.position = 105 + (piece.position - 12);
                     piece.final = true;
-                } else if(piece.position > 110) {
-                    //Aqui é se terminou
 
-                    piece.finished = true;
-                    piece.position = 0;
+                    if(piece.position > 110) {
+                        //Aqui é se terminou
+    
+                        piece.finished = true;
+                        piece.position = 0;
+                    }
+
                 } else if (piece.position !== 0 ) {
                     //Aqui é o 'padrão'
 
@@ -657,22 +679,33 @@ function sumPiecePosition (piece) {
             if(piece.position > 110) {
                 //Aqui é se está na reta final
 
-                if(uniqueRoom.dice <= (piece.position - 116)) {
+                if(uniqueRoom.dice <= (116 - piece.position)) {
 
                     piece.position += uniqueRoom.dice;
+
+                    if(piece.position > 115) {
+                        //Aqui é se terminou
+        
+                        piece.finished = true;
+                        piece.position = 0;
+                    } 
+
                 } else break;
 
-            } else if((piece.position + uniqueRoom.dice) > 25 && piece.canEntryFinal) {
+            } else if(((piece.position + uniqueRoom.dice) > 25) && piece.canEntryFinal) {
                 //Aqui é se precisar entrar na reta final
 
                 piece.position += uniqueRoom.dice;
                 piece.position = 110 + (piece.position - 25);
                 piece.final = true;
-            } else if(piece.position > 115) {
-                //Aqui é se terminou
 
-                piece.finished = true;
-                piece.position = 0;
+                if(piece.position > 115) {
+                    //Aqui é se terminou
+    
+                    piece.finished = true;
+                    piece.position = 0;
+                } 
+
             } else if (piece.position !== 0 ) {
                 //Aqui é o 'padrão'
 
@@ -684,22 +717,33 @@ function sumPiecePosition (piece) {
             if(piece.position > 115) {
                 //Aqui é se está na reta final
 
-                if(uniqueRoom.dice <= (piece.position - 121)) {
+                if(uniqueRoom.dice <= (121 - piece.position)) {
 
                     piece.position += uniqueRoom.dice;
+
+                    if(piece.position > 120) {
+                        //Aqui é se terminou
+        
+                        piece.finished = true;
+                        piece.position = 0;
+                    }
+
                 } else break;
 
-            } else if((piece.position + uniqueRoom.dice) > 38 && piece.canEntryFinal) {
+            } else if(((piece.position + uniqueRoom.dice) > 38) && piece.canEntryFinal) {
                 //Aqui é se precisar entrar na reta final
 
                 piece.position += uniqueRoom.dice;
                 piece.position = 115 + (piece.position - 38);
                 piece.final = true;
-            } else if(piece.position > 120) {
-                //Aqui é se terminou
 
-                piece.finished = true;
-                piece.position = 0;
+                if(piece.position > 120) {
+                    //Aqui é se terminou
+    
+                    piece.finished = true;
+                    piece.position = 0;
+                }
+
             } else if (piece.position !== 0 ) {
                 //Aqui é o 'padrão'
 
