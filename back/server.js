@@ -607,9 +607,10 @@ function sumPiecePosition (piece) {
                         piece.position += uniqueRoom.dice;
                     } else break;
 
-                } else if(piece.position > 51 && !piece.final) {
+                } else if(((piece.position + uniqueRoom.dice) > 51) && !piece.final) {
                     //Aqui é se precisar entrar na reta final
 
+                    piece.position += uniqueRoom.dice;
                     piece.position = 100 + (piece.position - 51);
                     piece.final = true;
                 } else if(piece.position > 105) {
@@ -634,9 +635,10 @@ function sumPiecePosition (piece) {
                         piece.position += uniqueRoom.dice;
                     } else break;
 
-                } else if(piece.position > 12 && piece.canEntryFinal) {
+                } else if((piece.position + uniqueRoom.dice) > 12 && piece.canEntryFinal) {
                     //Aqui é se precisar entrar na reta final
 
+                    piece.position += uniqueRoom.dice;
                     piece.position = 105 + (piece.position - 12);
                     piece.final = true;
                 } else if(piece.position > 110) {
@@ -660,9 +662,10 @@ function sumPiecePosition (piece) {
                     piece.position += uniqueRoom.dice;
                 } else break;
 
-            } else if(piece.position > 25 && piece.canEntryFinal) {
+            } else if((piece.position + uniqueRoom.dice) > 25 && piece.canEntryFinal) {
                 //Aqui é se precisar entrar na reta final
 
+                piece.position += uniqueRoom.dice;
                 piece.position = 110 + (piece.position - 25);
                 piece.final = true;
             } else if(piece.position > 115) {
@@ -686,9 +689,10 @@ function sumPiecePosition (piece) {
                     piece.position += uniqueRoom.dice;
                 } else break;
 
-            } else if(piece.position > 38 && piece.canEntryFinal) {
+            } else if((piece.position + uniqueRoom.dice) > 38 && piece.canEntryFinal) {
                 //Aqui é se precisar entrar na reta final
 
+                piece.position += uniqueRoom.dice;
                 piece.position = 115 + (piece.position - 38);
                 piece.final = true;
             } else if(piece.position > 120) {
