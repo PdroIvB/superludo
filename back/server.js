@@ -11,7 +11,7 @@ app.use(express.json());
 
 const wsServer = new WebSocket.Server({ server:server });
 
-const players = [];
+const playersWithToken = [];
 const rooms = [];
 let uniqueRoom;
 let contador = 0;
@@ -19,13 +19,21 @@ let contador = 0;
 wsServer.on('connection', function connection(ws){
     console.log('a new client has connected');
 
-    createPlayer(ws);
-    sendIdentifier(getPlayer(ws), ws);
+    ws.send(JSON.stringify({
+        type: 'verifyConnection'
+    }))
     
     ws.on('message', function Incoming(message){
         let msg = JSON.parse(message);
 
         switch (msg.type) {
+            case 'initPlayer':
+
+                    createPlayer(ws);
+                    sendIdentifier(getPlayer(ws));
+
+                break;
+
             case 'setName':
 
                     let player = getPlayer(ws);
@@ -84,6 +92,28 @@ wsServer.on('connection', function connection(ws){
                     passTurn();
 
                 break;
+
+            case 'reconnection':
+
+                if(playersWithToken.find(playerWithToken => playerWithToken.token === msg.token)){
+
+                    let player = playersWithToken.find(playerWithToken => playerWithToken.token === msg.token).player;
+            
+                    player.connection = ws;
+                    player.isBot = false;
+
+                    sendOtherPlayersUpdateMsg(ws, `${player.name} se reconectou!`);
+
+                    sendThisPlayerMsg(ws, `Você se reconectou com sucesso!`);
+                    askUpdateRoom(ws);
+            
+                } else {
+            
+                    createPlayer(ws);
+                    sendIdentifier(getPlayer(ws));
+                }
+
+                break;
         };
     });
 
@@ -131,11 +161,11 @@ function initGameWithRandom1stPlayer (ws, room) {
     askUpdateRoom(room.players);
 }
 
-function sendIdentifier(player, ws) {
+function sendIdentifier(player) {
     
     let identifier = {
         type: 'identifier',
-        playerID: player.id
+        token: playersWithToken.find(playerWithToken => playerWithToken.player === player).token
     };
 
     ws.send(JSON.stringify(identifier))
@@ -222,7 +252,7 @@ function getRoom (player) {
 };
 
 function getPlayer (ws) {
-    return players.find(player => player.connection === ws);
+    return playersWithToken.find(playerWithToken => playerWithToken.player.connection === ws);
 }
 
 function getPiece (msgPiece) {
@@ -321,7 +351,12 @@ function createPlayer(ws) {
         ]
     }
 
-    players.push(player);
+    let playerWithToken = {
+        token: 'siuvjerivb', //gerar o token aqui
+        player: player
+    }
+
+    playersWithToken.push(playerWithToken);
 };
 
 ///////////////////  Lógica do jogo a partir daqui  ///////////////////////////////
@@ -360,19 +395,19 @@ function playOrPass (ws) {
 
 function passTurn () {
 
-        uniqueRoom.turn++
+    uniqueRoom.turn++
 
-        if(uniqueRoom.dice == 6 || uniqueRoom.killed) {
-            --uniqueRoom.turn
-            uniqueRoom.killed = false;
-        }
+    if(uniqueRoom.dice == 6 || uniqueRoom.killed) {
+        --uniqueRoom.turn
+        uniqueRoom.killed = false;
+    }
 
-        uniqueRoom.turnsPlayer = uniqueRoom.players[uniqueRoom.turn % 4];
-        uniqueRoom.dice = null;
-        uniqueRoom.diced = false;
+    uniqueRoom.turnsPlayer = uniqueRoom.players[uniqueRoom.turn % 4];
+    uniqueRoom.dice = null;
+    uniqueRoom.diced = false;
 
-        askUpdateRoom(uniqueRoom.players);
-    };
+    askUpdateRoom(uniqueRoom.players);
+};
 
 function move (ws) {
 

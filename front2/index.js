@@ -11,7 +11,16 @@ let allPieces;
 let room;
 
 socketClient.onopen = () => {
-    console.log('connecteeeedd')
+    console.log('connecteeeedd');
+
+    let token = localStorage.getItem('token');
+
+    if(token) {
+        socketClient.send(JSON.stringify({
+            type: 'reconnection',
+            token: token //enviar o token do front pro back por aqui
+        }));
+    };
 };
 
 socketClient.onmessage = (event) => {
@@ -20,8 +29,30 @@ socketClient.onmessage = (event) => {
     switch (msg.type) {
         case 'identifier':
 
-                playerID = msg.playerID;
+                playerID = msg.token;
+
+                localStorage.setItem('token', msg.token);
                 
+            break;
+
+        case 'verifyConnection':
+
+            let token = localStorage.getItem('token');
+
+            if(token) {
+
+                socketClient.send(JSON.stringify({
+                    type: 'reconnection',
+                    token: token
+                }));
+
+            } else {
+
+                socketClient.send(JSON.stringify({
+                    type: 'initPlayer'
+                }));
+            };
+
             break;
 
         case 'roomUpdate':
