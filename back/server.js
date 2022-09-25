@@ -95,12 +95,16 @@ wsServer.on('connection', function connection(ws){
 
             case 'reconnection':
                 console.log("Entrou no reconnection");
-                let currentPlayer = playersWithToken.find(playerWithToken => playerWithToken.token === msg.token);
-                console.log("Esse é o currentPlayer: ", currentPlayer);
-                let tempPlayer = currentPlayer.player;
+                let tempPlayer;
+                playersWithToken.forEach(playerWithToken => {
+                    if (playerWithToken.token === msg.token) {
+                        playerWithToken.player.connection = ws;
+                        tempPlayer = getPlayer(ws);
+                    }
+                });
                 if(tempPlayer){
             
-                    tempPlayer.connection = ws;
+                    // tempPlayer.connection = ws;
                     tempPlayer.isBot = false;
 
                     // console.log("Erro do token: ", tempPlayer);
@@ -113,7 +117,7 @@ wsServer.on('connection', function connection(ws){
                     ws.send(JSON.stringify(sendUpdateRoomRequest = {
                         type: 'roomUpdate',
                         room: getRoom(tempPlayer),
-                        playerID: tempPlayer.playerID
+                        playerID: tempPlayer.id
                     }));
             
                 } else {
@@ -123,9 +127,9 @@ wsServer.on('connection', function connection(ws){
                 }
 
                 break;
-        };
+        }
     });
-
+    
     ws.on('close', function Closing () {
         if(getPlayer(ws).roomID) {
             getPlayer(ws).isBot = true;
