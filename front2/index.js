@@ -61,6 +61,10 @@ socketClient.onmessage = (event) => {
 
         case 'roomUpdate':
 
+                if (msg.playerID) {
+                    playerID = msg.playerID
+                }
+
                 document.getElementById("piecesToSelect").innerHTML = "";
 
                 console.log('room just when arrived: ', msg.room);
