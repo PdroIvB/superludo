@@ -99,15 +99,14 @@ wsServer.on('connection', function connection(ws){
                     if (playerWithToken.token === msg.token) {
                         playerWithToken.player.connection = ws;
                     }
-                })
+                });
                 let tempPlayer = getPlayer(ws);
-                console.log("erro connection: ", tempPlayer);
                 if(tempPlayer){
             
                     // tempPlayer.connection = ws;
                     tempPlayer.isBot = false;
 
-                    console.log("Erro do token: ", tempPlayer);
+                    // console.log("Erro do token: ", tempPlayer);
 
                     sendOtherPlayersUpdateMsg(ws, `${tempPlayer.name} se reconectou!`);
 
@@ -163,6 +162,7 @@ function initGameWithRandom1stPlayer (ws, room) {
         room.dice = null;
         room.diced = false;
         room.turnsPlayer = room.players[room.turn % 4];
+        // console.log("turnsPlayer error", room.turnsPlayer);
 
     } else {
 
@@ -174,10 +174,14 @@ function initGameWithRandom1stPlayer (ws, room) {
 
 function sendIdentifier(player) {
     let currentPlayer = playersWithToken.find(playerWithToken => playerWithToken.player.connection === player.connection);
+    console.log("Esse é o playerID: ", currentPlayer);
     let identifier = {
         type: 'identifier',
+        playerID: currentPlayer.player.id,
         token: currentPlayer.token
     };
+
+    console.log("Esse é o identifier: ", identifier);
 
     player.connection.send(JSON.stringify(identifier))
 }
@@ -280,7 +284,6 @@ function isRoomFull (room) {
 };
 
 function askUpdateRoom (players) {
-    console.log("UpdateRoom", players);
     players.forEach(player => {
         if(player !== undefined){
             player.connection.send(JSON.stringify(sendUpdateRoomRequest = {
@@ -374,7 +377,6 @@ function createPlayer(ws) {
         token: v4(), //gerar o token aqui
         player: player
     }
-    console.log("error token: ", playerWithToken);
 
     playersWithToken.push(playerWithToken);
 };

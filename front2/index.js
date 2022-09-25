@@ -32,9 +32,9 @@ socketClient.onmessage = (event) => {
 
     switch (msg.type) {
         case 'identifier':
-                console.log("Chegou aqui.");
-                playerID = msg.token;
-
+                
+                playerID = msg.playerID;
+                console.log(playerID, " do começo");
                 localStorage.setItem('token', msg.token);
                 
             break;
@@ -79,7 +79,6 @@ socketClient.onmessage = (event) => {
             break;
 
         case 'updateRoomRequest':
-            
                 socketClient.send(JSON.stringify(requestRoomUpdate = {
                     type: 'sendUpdatedRoom',
                     playerID: playerID
@@ -256,6 +255,7 @@ function renderAll() {
 };
 
 function ableDisableDiceBtn () {
+    console.log("Esse é o playerID: ", playerID);
     if ( msg.room.turnsPlayer.id === playerID) {
         diceBtn.disabled = false;
     } else {
