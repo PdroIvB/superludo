@@ -66,12 +66,14 @@ wsServer.on('connection', function connection(ws){
                     
                     uniqueRoom = getRoom(getPlayer(ws));
                     
-                    sendAllPlayersUpdateMsg(ws, `${uniqueRoom.turnsPlayer.name} tirou ${numDado} no dado!`)
+                    sendAllPlayersInThisRoom(ws, 'updateMsg', `${uniqueRoom.turnsPlayer.name} tirou ${numDado} no dado!`)
+
+                    sendAllPlayersInThisRoom(ws, 'numDado', numDado);
                     
                     uniqueRoom.dice = numDado;
                     uniqueRoom.diced = true;
 
-                    playOrPass(ws);
+                    playNPass(ws);
 
                 break;
 
@@ -93,7 +95,7 @@ wsServer.on('connection', function connection(ws){
 
             console.log(`Player ${getPlayer(ws).name} has disconnected from ${getRoom(getPlayer(ws)).id} room`);
 
-            sendAllPlayersUpdateMsg(ws, `${getPlayer(ws).name} disconectou da sala.`)
+            sendAllPlayersInThisRoom(ws, 'updateMsg', `${getPlayer(ws).name} disconectou da sala.`)
 
         } else {
 
@@ -118,14 +120,14 @@ function initGameWithRandom1stPlayer (ws, room) {
     if(isRoomFull(room)) {
 
         room.turn = Math.floor(Math.random() * 4);
-        sendAllPlayersUpdateMsg(ws, `${room.players[room.turn % 4].name} foi o jogador sorteado pra jogar primeiro!`);
+        sendAllPlayersInThisRoom(ws, 'updateMsg', `${room.players[room.turn % 4].name} foi o jogador sorteado pra jogar primeiro!`);
         room.dice = null;
         room.diced = false;
         room.turnsPlayer = room.players[room.turn % 4];
 
     } else {
 
-        sendAllPlayersUpdateMsg(ws, `Aguardando outros jogadores entrarem para iniciar partida`);
+        sendAllPlayersInThisRoom(ws, 'updateMsg', `Aguardando outros jogadores entrarem para iniciar partida`);
     }
 
     askUpdateRoom(room.players);
@@ -172,7 +174,7 @@ function insertPLayerInRoomWithPieces (ws, position) {
     
     if(isRoomFull(getRoom(getPlayer(ws)))){
 
-        sendThisPlayerMsg(ws, `4 jogadores já escolheram lugares pra sentar nessa sala, escolha suas peças novamente e vá para uma nova sala.`);
+        sendThisPlayer(ws, 'updateMsg', `4 jogadores já escolheram lugares pra sentar nessa sala, escolha suas peças novamente e vá para uma nova sala.`);
 
         identifyPlayerToRoom(getPlayer(ws))
 
@@ -182,7 +184,7 @@ function insertPLayerInRoomWithPieces (ws, position) {
 
         if (rooms.find(room => room.id === getPlayer(ws).roomID).players[position]) {
 
-            sendThisPlayerMsg(ws, `Outro jogador já escolheu essas peças. Escolha alguma outra!`);
+            sendThisPlayer(ws, 'updateMsg', `Outro jogador já escolheu essas peças. Escolha alguma outra!`);
 
             identifyPlayerToRoom(getPlayer(ws))
 
@@ -247,29 +249,32 @@ function askUpdateRoom (players) {
     });
 };
 
-function sendOtherPlayersUpdateMsg (ws, updateMsg) {
+function sendOtherPlayers (ws, msgType, msg) {
     getRoom(getPlayer(ws)).players.filter(player => player.connection !== ws).forEach(player => {
         player.connection.send(JSON.stringify({
-            type: 'updateMsg',
-            updateMsg: `${updateMsg}`
+            // type: 'updateMsg',
+            type: msgType,
+            msg: msg
         }));
     });
 };
 
-function sendAllPlayersUpdateMsg (ws, updateMsg) {
+function sendAllPlayersInThisRoom (ws, msgType, msg) {
     getRoom(getPlayer(ws)).players.forEach(player => {
         if(player !== undefined) {
             player.connection.send(JSON.stringify({
-                type: 'updateMsg',
-                updateMsg: `${updateMsg}`
+                // type: 'updateMsg',
+                type: msgType,
+                msg: `${msg}`
             }))
         };
     });
 };
 
-function sendThisPlayerMsg (ws, msg) {
+function sendThisPlayer (ws, msgType,msg) {
     ws.send(JSON.stringify({
-        type: 'updateMsg',
+        // type: 'updateMsg',
+        type: msgType,
         updateMsg: `${msg}`
     }))
 };
@@ -326,7 +331,7 @@ function createPlayer(ws) {
 
 ///////////////////  Lógica do jogo a partir daqui  ///////////////////////////////
 
-function playOrPass (ws) {
+function playNPass (ws) {
 
     if(hasPiecesOnBoard(uniqueRoom.turnsPlayer)) {
 
@@ -334,13 +339,21 @@ function playOrPass (ws) {
 
             moveSinglePiece(ws);
 
-            sendAllPlayersUpdateMsg(ws, `${uniqueRoom.turnsPlayer.name} tem apenas uma peça em jogo, ela foi movida automaticamente e a vez será passada`)
+            sendAllPlayersInThisRoom(ws, 'updateMsg', `${uniqueRoom.turnsPlayer.name} tem apenas uma peça em jogo, ela foi movida automaticamente e a vez será passada`);
 
             passTurn();
 
         } else if(playerPiecesOnBoard(uniqueRoom.turnsPlayer).length === 1 && uniqueRoom.dice === 6) { 
 
-            move(ws);
+            if(!hasPiecesToEnterBoard(ws)) {
+
+                moveSinglePiece(ws);
+
+                passTurn();
+            } else {
+
+                move(ws);
+            };
 
         } else {
 
@@ -350,9 +363,10 @@ function playOrPass (ws) {
     } else if(!hasPiecesOnBoard(uniqueRoom.turnsPlayer) && uniqueRoom.dice == 6) {
 
         move(ws);
+
     } else {
 
-        sendAllPlayersUpdateMsg(ws, `${uniqueRoom.turnsPlayer.name} não tem peças no tabuleiro e não tirou 6 no dado, a vez será passada`);
+        sendAllPlayersInThisRoom(ws, 'updateMsg', `${uniqueRoom.turnsPlayer.name} não tem peças no tabuleiro e não tirou 6 no dado, a vez será passada`);
 
         passTurn();
     };
@@ -377,9 +391,9 @@ function passTurn () {
 
 function move (ws) {
 
-    sendOtherPlayersUpdateMsg(ws, `${uniqueRoom.turnsPlayer.name} está fazendo sua jogada!`);
+    sendOtherPlayers(ws, 'updateMsg', `${uniqueRoom.turnsPlayer.name} está fazendo sua jogada!`);
 
-    sendThisPlayerMsg(ws, `${uniqueRoom.turnsPlayer.name}, sua vez de movimentar um peça! Clique em uma delas!`)
+    sendThisPlayer(ws, 'updateMsg',`${uniqueRoom.turnsPlayer.name}, sua vez de movimentar um peça! Clique em uma delas!`)
 
     ws.send(JSON.stringify(msgMakeMove = {
         type: 'makeAMove',
@@ -390,7 +404,7 @@ function move (ws) {
 
 function moveSinglePiece (ws) {
 
-    sendAllPlayersUpdateMsg(ws, `auto moving single piece`)
+    sendAllPlayersInThisRoom(ws, 'updateMsg', `auto moving single piece`)
 
     movePiece(ws, uniqueRoom.turnsPlayer.pieces.find(piece => piece.position !== null && piece.finished !== true));
 };
@@ -508,9 +522,9 @@ function isWhoIsGoingToPlayForBot () {
 function killAnotherPiece (ws, pieceInMoving) {
     if(hasPìeceWithPositionConflict(pieceInMoving)){
 
-        sendOtherPlayersUpdateMsg(ws, `${uniqueRoom.turnsPlayer.name} matou a peça de ${uniqueRoom.players.find(player => player.id ===pieceWithPositionConflict(pieceInMoving).playerID).name}! Hahaha`)
+        sendOtherPlayers(ws, 'updateMsg', `${uniqueRoom.turnsPlayer.name} matou a peça de ${uniqueRoom.players.find(player => player.id ===pieceWithPositionConflict(pieceInMoving).playerID).name}! Hahaha`)
 
-        sendThisPlayerMsg(ws, `Você matou uma peça de ${uniqueRoom.players.find(player => player.id ===pieceWithPositionConflict(pieceInMoving).playerID).name}! Hahaha`)
+        sendThisPlayer(ws, 'updateMsg', `Você matou uma peça de ${uniqueRoom.players.find(player => player.id ===pieceWithPositionConflict(pieceInMoving).playerID).name}! Hahaha`)
 
         pieceWithPositionConflict(pieceInMoving).final = false;
         pieceWithPositionConflict(pieceInMoving).canEntryFinal = false;
@@ -534,6 +548,12 @@ function reuneAllPieces () {
 
 function hasPìeceWithPositionConflict (pieceInMoving) {
     return reuneAllPieces().find(piece => piece.position === pieceInMoving.position && piece.playerID !== pieceInMoving.playerID && !isPieceInProtectedCell([0,1,9,14,22,27,35,40,48], pieceInMoving)) ? true : false;
+};
+
+function hasPiecesToEnterBoard (ws) {
+    let piecesOffBoard = getPlayer(ws).pieces.filter(piece => piece.position === null);
+
+    return piecesOffBoard.length === 0 ? false : true;
 };
 
 function pieceWithPositionConflict (pieceInMoving) {
@@ -592,7 +612,7 @@ function movePiece (ws, piece) {
     killAnotherPiece(ws, piece);
 
     if(getRoom(getPlayer(ws)).players.find(player => player.pieces.filter(piece=> piece.finished === true).length === 4)) {
-        sendAllPlayersUpdateMsg(ws, `${getPlayer(ws).players.find(player => player.pieces.filter(piece=> piece.finished === true).length === 4).name} VENCEU O JOGO`);
+        sendAllPlayersInThisRoom(ws, 'updateMsg', `${getRoom(getPlayer(ws)).players.find(player => player.pieces.filter(piece=> piece.finished === true).length === 4).name} VENCEU O JOGO`);
     };
 };
 
@@ -616,7 +636,7 @@ function sumPiecePosition (piece) {
 
                     } else {
 
-                        sendAllPlayersUpdateMsg(ws, `${uniqueRoom.turnsPlayer.name}, para terminar, você tem que tirar um número menor ou igual as casas que faltam!`);
+                        sendAllPlayersInThisRoom(ws, 'updateMsg', `${uniqueRoom.turnsPlayer.name}, para terminar, você tem que tirar um número menor ou igual as casas que faltam!`);
 
                         break;
                     };
