@@ -15,7 +15,7 @@ socketClient.onopen = () => {
 
     let token = localStorage.getItem('token');
 
-    if(token) {
+    /* if(token) {
         name.value = '';
         name.style.display = 'none';
         initBtn.disabled = true;
@@ -24,7 +24,7 @@ socketClient.onopen = () => {
             type: 'reconnection',
             token: token //enviar o token do front pro back por aqui
         }));
-    };
+    }; */
 };
 
 socketClient.onmessage = (event) => {
@@ -60,6 +60,10 @@ socketClient.onmessage = (event) => {
             break;
 
         case 'roomUpdate':
+
+                if (msg.playerID) {
+                    playerID = msg.playerID
+                }
 
                 document.getElementById("piecesToSelect").innerHTML = "";
 

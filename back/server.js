@@ -95,12 +95,13 @@ wsServer.on('connection', function connection(ws){
 
             case 'reconnection':
                 console.log("Entrou no reconnection");
+                let tempPlayer;
                 playersWithToken.forEach(playerWithToken => {
                     if (playerWithToken.token === msg.token) {
                         playerWithToken.player.connection = ws;
+                        tempPlayer = getPlayer(ws);
                     }
                 });
-                let tempPlayer = getPlayer(ws);
                 if(tempPlayer){
             
                     // tempPlayer.connection = ws;
@@ -114,7 +115,9 @@ wsServer.on('connection', function connection(ws){
                     // let roomPlayers = getRoom(getPlayer(ws)).players;
                     
                     ws.send(JSON.stringify(sendUpdateRoomRequest = {
-                        type: 'updateRoomRequest'
+                        type: 'roomUpdate',
+                        room: getRoom(tempPlayer),
+                        playerID: tempPlayer.id
                     }));
             
                 } else {
