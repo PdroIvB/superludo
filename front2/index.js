@@ -13,7 +13,7 @@ let room;
 socketClient.onopen = () => {
     console.log('connecteeeedd');
 
-    let token = localStorage.getItem('token');
+    // let token = localStorage.getItem('token');
 
     /* if(token) {
         name.value = '';
@@ -83,6 +83,15 @@ socketClient.onmessage = (event) => {
             break;
 
         case 'updateRoomRequest':
+                name.value = '';
+                name.style.display = 'none';
+                initBtn.disabled = true;
+                initBtn.style.display = 'none';
+
+                if (msg.playerID) {
+                    playerID = msg.playerID
+                }
+
                 socketClient.send(JSON.stringify(requestRoomUpdate = {
                     type: 'sendUpdatedRoom',
                     playerID: playerID

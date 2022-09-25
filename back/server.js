@@ -103,10 +103,7 @@ wsServer.on('connection', function connection(ws){
                     }
                 });
                 if(tempPlayer){
-            
-                    // tempPlayer.connection = ws;
                     tempPlayer.isBot = false;
-
                     // console.log("Erro do token: ", tempPlayer);
 
                     sendOtherPlayersUpdateMsg(ws, `${tempPlayer.name} se reconectou!`);
@@ -115,8 +112,7 @@ wsServer.on('connection', function connection(ws){
                     // let roomPlayers = getRoom(getPlayer(ws)).players;
                     
                     ws.send(JSON.stringify(sendUpdateRoomRequest = {
-                        type: 'roomUpdate',
-                        room: getRoom(tempPlayer),
+                        type: 'updateRoomRequest',
                         playerID: tempPlayer.id
                     }));
             
