@@ -21,7 +21,7 @@ socketClient.onmessage = (event) => {
         case 'identifier':
 
                 playerID = msg.playerID;
-                
+
             break;
 
         case 'roomUpdate':
@@ -32,11 +32,9 @@ socketClient.onmessage = (event) => {
 
                 room = msg.room;
 
+                diceBtn.style.display = 'flex';
+
                 if(msg.room.turn !== null) {
-
-                    turn();
-                    diceBtn.style.display = 'flex';
-
                 };
 
                 renderAll();
@@ -79,6 +77,13 @@ socketClient.onmessage = (event) => {
                 //esse caminho só vai entregar o numero do dado
 
             break;
+
+        case 'ableDiceBtn':
+
+                diceBtn.disabled = false;
+                console.log(`abledar esse dicebtn aí`);
+
+            break;
     };
 };
 
@@ -119,20 +124,6 @@ function sendName() {
     name.style.display = 'none';
     initBtn.disabled = true;
     initBtn.style.display = 'none';
-};
-
-function turn () {
-
-    if (msg.room.turnsPlayer.id === playerID) {
-        console.log(msg.room.turnsPlayer.name + ", Eh sua vez de jogar o dado!");
-    } else {
-        console.log('É a vez de: ' + msg.room.turnsPlayer.name);
-        if (msg.room.turnsPlayer.isBot) {
-            autoMove(); //TODO ver o q fazer com o bot do front
-        }
-    };
-
-    ableDisableDiceBtn();
 };
 
 function dice () {
@@ -226,14 +217,6 @@ function renderAll() {
             });
         }
     })
-};
-
-function ableDisableDiceBtn () {
-    if ( msg.room.turnsPlayer.id === playerID) {
-        diceBtn.disabled = false;
-    } else {
-        diceBtn.disabled = true;
-    };
 };
 
 function moving (e) {
