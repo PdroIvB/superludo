@@ -107,7 +107,7 @@ socketClient.onmessage = (event) => {
 
         case 'updateMsg':
 
-                console.log(msg.updateMsg);
+                console.log(msg.msg);
 
             break;
 
@@ -117,6 +117,13 @@ socketClient.onmessage = (event) => {
                 console.log(`Selecione uma das peças: `, msg.pieces);
 
                 renderPieces(msg.pieces);
+
+            break;
+
+        case 'numDado':
+
+                console.log(msg.msg);
+                //esse caminho só vai entregar o numero do dado
 
             break;
     };
