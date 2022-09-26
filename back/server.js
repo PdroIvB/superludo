@@ -18,13 +18,24 @@ let contador = 0;
 wsServer.on('connection', function connection(ws){
     console.log('a new client has connected');
 
-    createPlayer(ws);
-    sendIdentifier(getPlayer(ws), ws);
+    ws.send(JSON.stringify({
+        type: 'verifyConnection'
+    }));
     
     ws.on('message', function Incoming(message){
         let msg = JSON.parse(message);
 
         switch (msg.type) {
+            case 'initPlayer':
+
+                    console.log("Entrou no initPlayer");
+
+                    createPlayer(ws);
+
+                    sendIdentifier(ws, getPlayer(ws));
+
+                break;
+
             case 'setName':
 
                     let player = getPlayer(ws);
@@ -109,6 +120,44 @@ wsServer.on('connection', function connection(ws){
                     sendAllPlayersInThisRoom(ws, 'chat', getRoom(getPlayer(ws)).chat);
 
                 break;
+
+            case 'reconnection':
+
+                    console.log("Entrou no reconnection");
+
+                    let tempPlayer;
+
+                    playersWithToken.forEach(playerWithToken => {
+
+                        if (playerWithToken.token === msg.token) {
+                            playerWithToken.player.connection = ws;
+                            tempPlayer = getPlayer(ws);
+                        };
+                    });
+
+                    if(tempPlayer){
+                
+                        // tempPlayer.connection = ws;
+                        tempPlayer.isBot = false;
+    
+                        // console.log("Erro do token: ", tempPlayer);
+    
+                        sendAllPlayersInThisRoom(ws, 'updateMsg',`${tempPlayer.name} se reconectou!`);
+    
+                        sendThisPlayer(ws, 'updateMsg',`Você se reconectou com sucesso!`);
+                        // let roomPlayers = getRoom(getPlayer(ws)).players;
+                        
+                        ws.send(JSON.stringify({
+                            type: 'updateRoomRequest'
+                        }));
+                
+                    } else {
+                        
+                        createPlayer(ws);
+                        sendIdentifier(ws ,getPlayer(ws));
+                    }
+    
+                break;
         };
     });
 
@@ -167,15 +216,16 @@ function initGameWithRandom1stPlayer (ws, room) {
 };
 
 function sendIdentifier(ws, player) {
-    let currentPlayer = playersWithToken.find(playerWithToken => playerWithToken.player.connection === player.connection);
-    console.log("Esse é o playerID: ", currentPlayer);
+
+    let currentPlayer = playersWithToken.find(playersWithToken => playersWithToken.player.connection === ws);
+
     let identifier = {
         type: 'identifier',
         playerID: currentPlayer.player.id,
         token: currentPlayer.token
     };
 
-    askUpdateRoom(room.players);
+    ws.send(JSON.stringify(identifier));
 };
 
 function identifyPlayerToRoom (player) {
@@ -260,7 +310,8 @@ function getRoom (player) {
 
 function getPlayer (ws) {
     let currentPlayer = playersWithToken.find(playerWithToken => playerWithToken.player.connection === ws)
-    return currentPlayer.player;
+
+    return currentPlayer ? currentPlayer.player : false;
 }
 
 function getPiece (ws, msgPiece) {
@@ -314,7 +365,12 @@ function createPlayer(ws) {
         ]
     }
 
-    players.push(player);
+    let playerWithToken = {
+        token: v4(),
+        player: player
+    };
+
+    playersWithToken.push(playerWithToken);
 };
 
 function isRoomFull (room) {
