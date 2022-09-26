@@ -11,7 +11,7 @@ app.use(express.json());
 
 const wsServer = new WebSocket.Server({ server:server });
 
-const players = [];
+const playersWithToken = [];
 const rooms = [];
 let contador = 0;
 
@@ -263,6 +263,10 @@ function getPlayer (ws) {
     return currentPlayer.player;
 }
 
+function getPiece (ws, msgPiece) {
+    return getRoom(getPlayer(ws)).players.find(player => player.id === msgPiece.playerID).pieces.find(piece => piece.id === msgPiece.id);
+};
+
 function createPlayer(ws) {
     let id = v4();
 
@@ -311,18 +315,6 @@ function createPlayer(ws) {
     }
 
     players.push(player);
-};
-
-function getRoom (player) {
-    return rooms.find(room => room.id === player.roomID);
-};
-
-function getPlayer (ws) {
-    return players.find(player => player.connection === ws);
-}
-
-function getPiece (ws, msgPiece) {
-    return getRoom(getPlayer(ws)).players.find(player => player.id === msgPiece.playerID).pieces.find(piece => piece.id === msgPiece.id);
 };
 
 function isRoomFull (room) {
