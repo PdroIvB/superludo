@@ -70,13 +70,12 @@ wsServer.on('connection', function connection(ws){
                     console.log('chegamos no type dado');
 
                     numDado = Math.floor(Math.random() * 6 + 1);
-                    
+
                     sendAllPlayersInThisRoom(ws, 'updateMsg', `${getRoom(getPlayer(ws)).turnsPlayer.name} tirou ${numDado} no dado!`)
 
                     sendAllPlayersInThisRoom(ws, 'numDado', numDado);
-                    
+
                     getRoom(getPlayer(ws)).dice = numDado;
-                    getRoom(getPlayer(ws)).diced = true;
 
                     playNPass(ws);
 
@@ -157,18 +156,23 @@ function initGameWithRandom1stPlayer (ws, room) {
 
         room.turn = Math.floor(Math.random() * 4);
         sendAllPlayersInThisRoom(ws, 'updateMsg', `${room.players[room.turn % 4].name} foi o jogador sorteado pra jogar primeiro!`);
+
         room.dice = null;
-        room.diced = false;
         room.turnsPlayer = room.players[room.turn % 4];
         // console.log("turnsPlayer error", room.turnsPlayer);
+
+        sendThisPlayer(room.turnsPlayer.connection, 'updateMsg', `${room.turnsPlayer.name}, é a sua vez de jogar!`);
+        sendOtherPlayers(room.turnsPlayer.connection, 'updateMsg', `É a de vez de ${room.turnsPlayer.name} jogar!`);
+
+        sendThisPlayer(room.turnsPlayer.connection, 'ableDiceBtn', ``);
 
     } else {
 
         sendAllPlayersInThisRoom(ws, 'updateMsg', `Aguardando outros jogadores entrarem para iniciar partida`);
-    }
+    };
 
     askUpdateRoom(room.players);
-}
+};
 
 function sendIdentifier(player) {
     let currentPlayer = playersWithToken.find(playerWithToken => playerWithToken.player.connection === player.connection);
@@ -227,7 +231,7 @@ function insertPLayerInRoomWithPieces (ws, position) {
 
             sendThisPlayer(ws, 'updateMsg', `Outro jogador já escolheu essas peças. Escolha alguma outra!`);
 
-            identifyPlayerToRoom(getPlayer(ws))
+            identifyPlayerToRoom(getPlayer(ws));
 
             sendPiecesToSelect(ws);
 
@@ -254,7 +258,6 @@ function createRoom (id) {
         turn: null,
         players: [undefined,undefined,undefined,undefined],
         dice: null,
-        diced: false
     }
 
     rooms.push(room);
@@ -294,7 +297,6 @@ function askUpdateRoom (players) {
 function sendOtherPlayers (ws, msgType, msg) {
     getRoom(getPlayer(ws)).players.filter(player => player.connection !== ws).forEach(player => {
         player.connection.send(JSON.stringify({
-            // type: 'updateMsg',
             type: msgType,
             msg: msg
         }));
@@ -305,9 +307,8 @@ function sendAllPlayersInThisRoom (ws, msgType, msg) {
     getRoom(getPlayer(ws)).players.forEach(player => {
         if(player !== undefined) {
             player.connection.send(JSON.stringify({
-                // type: 'updateMsg',
                 type: msgType,
-                msg: `${msg}`
+                msg: msg
             }))
         };
     });
@@ -315,9 +316,8 @@ function sendAllPlayersInThisRoom (ws, msgType, msg) {
 
 function sendThisPlayer (ws, msgType,msg) {
     ws.send(JSON.stringify({
-        // type: 'updateMsg',
         type: msgType,
-        updateMsg: `${msg}`
+        msg: msg
     }))
 };
 
@@ -431,9 +431,9 @@ function passTurn (ws) {
 
     getRoom(getPlayer(ws)).turnsPlayer = getRoom(getPlayer(ws)).players[getRoom(getPlayer(ws)).turn % 4];
     getRoom(getPlayer(ws)).dice = null;
-    getRoom(getPlayer(ws)).diced = false;
 
     askUpdateRoom(getRoom(getPlayer(ws)).players);
+    sendThisPlayer(getRoom(getPlayer(ws)).turnsPlayer.connection, 'ableDiceBtn', '');
 };
 
 function move (ws) {
@@ -465,7 +465,7 @@ function playerPiecesOnBoard(player) {
 };
 
 function bot() {
-
+//TODO fazer o bot;
 };
 
 function passTurnForBot () {
@@ -602,12 +602,7 @@ function sumPiecePosition (ws, piece) {
 
                         piece.position += getRoom(getPlayer(ws)).dice;
 
-                        if(piece.position > 105) {
-                            //Aqui é se terminou
-        
-                            piece.finished = true;
-                            piece.position = 0;
-                        }
+                        finalizePiece(ws, piece);
 
                     } else {
 
@@ -623,7 +618,7 @@ function sumPiecePosition (ws, piece) {
                     piece.position = 100 + (piece.position - 51);
                     piece.final = true;
 
-                    finalizePiece(piece);
+                    finalizePiece(ws, piece);
 
                 } else if (piece.position !== 0 ) {
                     //Aqui é o 'padrão'
@@ -641,7 +636,7 @@ function sumPiecePosition (ws, piece) {
 
                         piece.position += getRoom(getPlayer(ws)).dice;
 
-                        finalizePiece(piece);
+                        finalizePiece(ws, piece);
 
                     } else break;
 
@@ -652,7 +647,7 @@ function sumPiecePosition (ws, piece) {
                     piece.position = 105 + (piece.position - 12);
                     piece.final = true;
 
-                    finalizePiece(piece);
+                    finalizePiece(ws, piece);
 
                 } else if (piece.position !== 0 ) {
                     //Aqui é o 'padrão'
@@ -670,7 +665,7 @@ function sumPiecePosition (ws, piece) {
 
                     piece.position += getRoom(getPlayer(ws)).dice;
 
-                    finalizePiece(piece);
+                    finalizePiece(ws, piece);
 
                 } else break;
 
@@ -681,7 +676,7 @@ function sumPiecePosition (ws, piece) {
                 piece.position = 110 + (piece.position - 25);
                 piece.final = true;
 
-                finalizePiece(piece);
+                finalizePiece(ws, piece);
 
             } else if (piece.position !== 0 ) {
                 //Aqui é o 'padrão'
@@ -699,7 +694,7 @@ function sumPiecePosition (ws, piece) {
 
                     piece.position += getRoom(getPlayer(ws)).dice;
 
-                    finalizePiece(piece);
+                    finalizePiece(ws, piece);
 
                 } else break;
 
@@ -710,7 +705,7 @@ function sumPiecePosition (ws, piece) {
                 piece.position = 115 + (piece.position - 38);
                 piece.final = true;
 
-                finalizePiece(piece);
+                finalizePiece(ws, piece);
 
             } else if (piece.position !== 0 ) {
                 //Aqui é o 'padrão'
@@ -721,7 +716,7 @@ function sumPiecePosition (ws, piece) {
     }
 };
 
-function finalizePiece(piece){
+function finalizePiece(ws, piece){
     switch (getRoom(getPlayer(ws)).players.indexOf(getRoom(getPlayer(ws)).turnsPlayer)) {
         case 0:
 
