@@ -11,7 +11,7 @@ app.use(express.json());
 
 const wsServer = new WebSocket.Server({ server:server });
 
-const players = [];
+const playersWithToken = [];
 const rooms = [];
 let contador = 0;
 
@@ -63,7 +63,7 @@ wsServer.on('connection', function connection(ws){
 
                     numDado = Math.floor(Math.random() * 6 + 1);
 
-                    sendAllPlayersInThisRoom(ws, 'updateMsg', `${getRoom(getPlayer(ws)).turnsPlayer.name} tirou ${numDado} no dado!`)
+                    sendAllPlayersInThisRoom(ws, 'updateMsg', `${getRoom(getPlayer(ws)).turnsPlayer.name} tirou ${numDado} no dado!`);
 
                     sendAllPlayersInThisRoom(ws, 'numDado', numDado);
 
@@ -82,6 +82,33 @@ wsServer.on('connection', function connection(ws){
                     passTurn(ws);
 
                 break;
+            
+            case 'playAgain':
+
+                    console.log("recebida msg de playAgain");
+
+                    if(msg.playAgain) {
+                        sendPiecesToSelect(ws);
+                    } else {
+                        getPlayer(ws).roomID = null;
+                        sendThisPlayer(ws, 'closeGame', '');
+                    };
+
+                break;
+
+            case 'chat':
+
+                    console.log('msg de chat recebida');
+
+                    getRoom(getPlayer(ws)).chat.push({
+                        playerName: getPlayer(ws).name,
+                        content: msg.content,
+                        index: getRoom(getPlayer(ws)).players.indexOf(getPlayer(ws))
+                    });
+
+                    sendAllPlayersInThisRoom(ws, 'chat', getRoom(getPlayer(ws)).chat);
+
+                break;
         };
     });
 
@@ -91,7 +118,7 @@ wsServer.on('connection', function connection(ws){
 
             console.log(`Player ${getPlayer(ws).name} has disconnected from ${getRoom(getPlayer(ws)).id} room`);
 
-            sendAllPlayersInThisRoom(ws, 'updateMsg', `${getPlayer(ws).name} disconectou da sala.`)
+            sendAllPlayersInThisRoom(ws, 'updateMsg', `${getPlayer(ws).name} desconectou da sala.`)
 
         } else {
 
@@ -126,6 +153,11 @@ function initGameWithRandom1stPlayer (ws, room) {
 
         sendThisPlayer(room.turnsPlayer.connection, 'ableDiceBtn', ``);
 
+        sendThisPlayer(room.turnsPlayer.connection, 'updateMsg', `${room.turnsPlayer.name}, é a sua vez de jogar!`);
+        sendOtherPlayers(room.turnsPlayer.connection, 'updateMsg', `É a de vez de ${room.turnsPlayer.name} jogar!`);
+
+        sendThisPlayer(room.turnsPlayer.connection, 'ableDiceBtn', ``);
+
     } else {
 
         sendAllPlayersInThisRoom(ws, 'updateMsg', `Aguardando outros jogadores entrarem para iniciar partida`);
@@ -134,15 +166,17 @@ function initGameWithRandom1stPlayer (ws, room) {
     askUpdateRoom(room.players);
 };
 
-function sendIdentifier(player, ws) {
-    
+function sendIdentifier(ws, player) {
+    let currentPlayer = playersWithToken.find(playerWithToken => playerWithToken.player.connection === player.connection);
+    console.log("Esse é o playerID: ", currentPlayer);
     let identifier = {
         type: 'identifier',
-        playerID: player.id
+        playerID: currentPlayer.player.id,
+        token: currentPlayer.token
     };
 
-    ws.send(JSON.stringify(identifier))
-}
+    askUpdateRoom(room.players);
+};
 
 function identifyPlayerToRoom (player) {
 
@@ -214,6 +248,7 @@ function createRoom (id) {
         turn: null,
         players: [undefined,undefined,undefined,undefined],
         dice: null,
+        chat: []
     }
 
     rooms.push(room);
@@ -224,56 +259,12 @@ function getRoom (player) {
 };
 
 function getPlayer (ws) {
-    return players.find(player => player.connection === ws);
+    let currentPlayer = playersWithToken.find(playerWithToken => playerWithToken.player.connection === ws)
+    return currentPlayer.player;
 }
 
 function getPiece (ws, msgPiece) {
     return getRoom(getPlayer(ws)).players.find(player => player.id === msgPiece.playerID).pieces.find(piece => piece.id === msgPiece.id);
-};
-
-function isRoomFull (room) {
-    let playersCount = 0;
-
-    room.players.forEach(player => player != undefined ? playersCount++ : playersCount = playersCount);
-
-    return playersCount === 4 ? true : false;
-};
-
-function askUpdateRoom (players) {
-    players.forEach(player => {
-        if(player !== undefined){
-            player.connection.send(JSON.stringify(sendUpdateRoomRequest = {
-                type: 'updateRoomRequest'
-            }));
-        };
-    });
-};
-
-function sendOtherPlayers (ws, msgType, msg) {
-    getRoom(getPlayer(ws)).players.filter(player => player.connection !== ws).forEach(player => {
-        player.connection.send(JSON.stringify({
-            type: msgType,
-            msg: msg
-        }));
-    });
-};
-
-function sendAllPlayersInThisRoom (ws, msgType, msg) {
-    getRoom(getPlayer(ws)).players.forEach(player => {
-        if(player !== undefined) {
-            player.connection.send(JSON.stringify({
-                type: msgType,
-                msg: msg
-            }))
-        };
-    });
-};
-
-function sendThisPlayer (ws, msgType,msg) {
-    ws.send(JSON.stringify({
-        type: msgType,
-        msg: msg
-    }))
 };
 
 function createPlayer(ws) {
@@ -324,6 +315,66 @@ function createPlayer(ws) {
     }
 
     players.push(player);
+};
+
+function isRoomFull (room) {
+    let playersCount = 0;
+
+    room.players.forEach(player => player != undefined ? playersCount++ : playersCount = playersCount);
+
+    return playersCount === 4 ? true : false;
+};
+
+function askUpdateRoom (players) {
+    players.forEach(player => {
+        if(player !== undefined){
+            player.connection.send(JSON.stringify(sendUpdateRoomRequest = {
+                type: 'updateRoomRequest'
+            }));
+        };
+    });
+};
+
+function sendOtherPlayers (ws, msgType, msg) {
+    getRoom(getPlayer(ws)).players.filter(player => player.connection !== ws).forEach(player => {
+        player.connection.send(JSON.stringify({
+            type: msgType,
+            msg: msg
+        }));
+    });
+};
+
+function sendAllPlayersInThisRoom (ws, msgType, msg) {
+    getRoom(getPlayer(ws)).players.forEach(player => {
+        if(player !== undefined) {
+            player.connection.send(JSON.stringify({
+                type: msgType,
+                msg: msg
+            }))
+        };
+    });
+};
+
+function sendThisPlayer (ws, msgType,msg) {
+    ws.send(JSON.stringify({
+        type: msgType,
+        msg: msg
+    }))
+};
+
+function sendAllPlayersInThisRoomSystemMsgInChat (ws, systemMsg) {
+    getRoom(getPlayer(ws)).chat.push({
+        content: systemMsg
+    });
+
+    sendAllPlayersInThisRoom(ws, 'chat', getRoom(getPlayer(ws)).chat);
+};
+
+function resetRoom (room) {
+    room.turn = null,
+    room.dice = null,
+    room.players = [undefined,undefined,undefined,undefined],
+    room.chat = []
 };
 
 ///////////////////  Lógica do jogo a partir daqui  ///////////////////////////////
@@ -537,7 +588,10 @@ function movePiece (ws, piece) {
     killAnotherPiece(ws, piece);
 
     if(getRoom(getPlayer(ws)).players.find(player => player.pieces.filter(piece=> piece.finished === true).length === 4)) {
-        sendAllPlayersInThisRoom(ws, 'updateMsg', `${getRoom(getPlayer(ws)).players.find(player => player.pieces.filter(piece=> piece.finished === true).length === 4).name} VENCEU O JOGO`);
+
+        let winner = getRoom(getPlayer(ws)).players.find(player => player.pieces.filter(piece=> piece.finished === true).length === 4);
+
+        finalizeGame(ws, winner);
     };
 };
 
@@ -716,6 +770,12 @@ function finalizePiece(ws, piece){
 
             break;
     };
+};
+
+function finalizeGame (ws, winnerPlayer) {
+    sendAllPlayersInThisRoom(ws, 'finalizingGame', winnerPlayer);
+
+    resetRoom(getRoom(getPlayer(ws)));
 };
 
 server.listen(port, () => {console.log(`server listening on port ${port}`)});

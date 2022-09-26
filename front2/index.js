@@ -11,7 +11,20 @@ let allPieces;
 let room;
 
 socketClient.onopen = () => {
-    console.log('connecteeeedd')
+    console.log('connecteeeedd');
+
+    // let token = localStorage.getItem('token');
+
+    /* if(token) {
+        name.value = '';
+        name.style.display = 'none';
+        initBtn.disabled = true;
+        initBtn.style.display = 'none';
+        socketClient.send(JSON.stringify({
+            type: 'reconnection',
+            token: token //enviar o token do front pro back por aqui
+        }));
+    }; */
 };
 
 socketClient.onmessage = (event) => {
@@ -19,12 +32,37 @@ socketClient.onmessage = (event) => {
 
     switch (msg.type) {
         case 'identifier':
-
+                
                 playerID = msg.playerID;
+                localStorage.setItem('token', msg.token);
+                
+            break;
+
+        case 'verifyConnection':
+
+            let token = localStorage.getItem('token');
+
+            if(token) {
+
+                socketClient.send(JSON.stringify({
+                    type: 'reconnection',
+                    token: token
+                }));
+
+            } else {
+
+                socketClient.send(JSON.stringify({
+                    type: 'initPlayer'
+                }));
+            };
 
             break;
 
         case 'roomUpdate':
+
+                if (msg.playerID) {
+                    playerID = msg.playerID
+                }
 
                 document.getElementById("piecesToSelect").innerHTML = "";
 
@@ -42,7 +80,15 @@ socketClient.onmessage = (event) => {
             break;
 
         case 'updateRoomRequest':
-            
+                name.value = '';
+                name.style.display = 'none';
+                initBtn.disabled = true;
+                initBtn.style.display = 'none';
+
+                if (msg.playerID) {
+                    playerID = msg.playerID
+                }
+
                 socketClient.send(JSON.stringify(requestRoomUpdate = {
                     type: 'sendUpdatedRoom',
                     playerID: playerID
@@ -116,7 +162,6 @@ function sendName() {
     let msgInit = {
         type: 'setName',
         playerName: nameToSend,
-        playerID: playerID
     }
 
     socketClient.send(JSON.stringify(msgInit));
