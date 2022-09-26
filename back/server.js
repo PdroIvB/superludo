@@ -105,7 +105,7 @@ wsServer.on('connection', function connection(ws){
                     tempPlayer.isBot = false;
                     // console.log("Erro do token: ", tempPlayer);
 
-                    sendOtherPlayersUpdateMsg(ws, `${tempPlayer.name} se reconectou!`);
+                    sendOtherPlayers(ws, `${tempPlayer.name} se reconectou!`);
 
                     sendThisPlayerMsg(ws, `Você se reconectou com sucesso!`);
                     // let roomPlayers = getRoom(getPlayer(ws)).players;
