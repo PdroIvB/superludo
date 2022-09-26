@@ -126,12 +126,12 @@ function initGameWithRandom1stPlayer (ws, room) {
 
         sendThisPlayer(room.turnsPlayer.connection, 'ableDiceBtn', ``);
 
-        askUpdateRoom(room.players);
-
     } else {
 
         sendAllPlayersInThisRoom(ws, 'updateMsg', `Aguardando outros jogadores entrarem para iniciar partida`);
     };
+
+    askUpdateRoom(room.players);
 };
 
 function sendIdentifier(player, ws) {
@@ -552,12 +552,7 @@ function sumPiecePosition (ws, piece) {
 
                         piece.position += getRoom(getPlayer(ws)).dice;
 
-                        if(piece.position > 105) {
-                            //Aqui é se terminou
-        
-                            piece.finished = true;
-                            piece.position = 0;
-                        }
+                        finalizePiece(ws, piece);
 
                     } else {
 
@@ -573,7 +568,7 @@ function sumPiecePosition (ws, piece) {
                     piece.position = 100 + (piece.position - 51);
                     piece.final = true;
 
-                    finalizePiece(piece);
+                    finalizePiece(ws, piece);
 
                 } else if (piece.position !== 0 ) {
                     //Aqui é o 'padrão'
@@ -591,7 +586,7 @@ function sumPiecePosition (ws, piece) {
 
                         piece.position += getRoom(getPlayer(ws)).dice;
 
-                        finalizePiece(piece);
+                        finalizePiece(ws, piece);
 
                     } else break;
 
@@ -602,7 +597,7 @@ function sumPiecePosition (ws, piece) {
                     piece.position = 105 + (piece.position - 12);
                     piece.final = true;
 
-                    finalizePiece(piece);
+                    finalizePiece(ws, piece);
 
                 } else if (piece.position !== 0 ) {
                     //Aqui é o 'padrão'
@@ -620,7 +615,7 @@ function sumPiecePosition (ws, piece) {
 
                     piece.position += getRoom(getPlayer(ws)).dice;
 
-                    finalizePiece(piece);
+                    finalizePiece(ws, piece);
 
                 } else break;
 
@@ -631,7 +626,7 @@ function sumPiecePosition (ws, piece) {
                 piece.position = 110 + (piece.position - 25);
                 piece.final = true;
 
-                finalizePiece(piece);
+                finalizePiece(ws, piece);
 
             } else if (piece.position !== 0 ) {
                 //Aqui é o 'padrão'
@@ -649,7 +644,7 @@ function sumPiecePosition (ws, piece) {
 
                     piece.position += getRoom(getPlayer(ws)).dice;
 
-                    finalizePiece(piece);
+                    finalizePiece(ws, piece);
 
                 } else break;
 
@@ -660,7 +655,7 @@ function sumPiecePosition (ws, piece) {
                 piece.position = 115 + (piece.position - 38);
                 piece.final = true;
 
-                finalizePiece(piece);
+                finalizePiece(ws, piece);
 
             } else if (piece.position !== 0 ) {
                 //Aqui é o 'padrão'
@@ -671,7 +666,7 @@ function sumPiecePosition (ws, piece) {
     }
 };
 
-function finalizePiece(piece){
+function finalizePiece(ws, piece){
     switch (getRoom(getPlayer(ws)).players.indexOf(getRoom(getPlayer(ws)).turnsPlayer)) {
         case 0:
 
