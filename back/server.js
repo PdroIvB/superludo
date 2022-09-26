@@ -153,6 +153,11 @@ function initGameWithRandom1stPlayer (ws, room) {
 
         sendThisPlayer(room.turnsPlayer.connection, 'ableDiceBtn', ``);
 
+        sendThisPlayer(room.turnsPlayer.connection, 'updateMsg', `${room.turnsPlayer.name}, é a sua vez de jogar!`);
+        sendOtherPlayers(room.turnsPlayer.connection, 'updateMsg', `É a de vez de ${room.turnsPlayer.name} jogar!`);
+
+        sendThisPlayer(room.turnsPlayer.connection, 'ableDiceBtn', ``);
+
     } else {
 
         sendAllPlayersInThisRoom(ws, 'updateMsg', `Aguardando outros jogadores entrarem para iniciar partida`);
@@ -161,15 +166,17 @@ function initGameWithRandom1stPlayer (ws, room) {
     askUpdateRoom(room.players);
 };
 
-function sendIdentifier(player, ws) {
-    
+function sendIdentifier(ws, player) {
+    let currentPlayer = playersWithToken.find(playerWithToken => playerWithToken.player.connection === player.connection);
+    console.log("Esse é o playerID: ", currentPlayer);
     let identifier = {
         type: 'identifier',
-        playerID: player.id
+        playerID: currentPlayer.player.id,
+        token: currentPlayer.token
     };
 
-    ws.send(JSON.stringify(identifier))
-}
+    askUpdateRoom(room.players);
+};
 
 function identifyPlayerToRoom (player) {
 
@@ -246,6 +253,15 @@ function createRoom (id) {
 
     rooms.push(room);
 };
+
+function getRoom (player) {
+    return rooms.find(room => room.id === player.roomID);
+};
+
+function getPlayer (ws) {
+    let currentPlayer = playersWithToken.find(playerWithToken => playerWithToken.player.connection === ws)
+    return currentPlayer.player;
+}
 
 function createPlayer(ws) {
     let id = v4();
