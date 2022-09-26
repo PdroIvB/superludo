@@ -127,35 +127,44 @@ wsServer.on('connection', function connection(ws){
 
                     let tempPlayer;
 
-                    playersWithToken.forEach(playerWithToken => {
+                    if(playersWithToken.find(playerWithToken => playerWithToken.token === msg.token)){
 
-                        if (playerWithToken.token === msg.token) {
-                            playerWithToken.player.connection = ws;
-                            tempPlayer = getPlayer(ws);
-                        };
-                    });
+                        console.log("achou player com esse token");
 
-                    if(tempPlayer){
-                
-                        // tempPlayer.connection = ws;
+                        tempPlayer = playersWithToken.find(playerWithToken => playerWithToken.token === msg.token).player;
+
+                        tempPlayer.connection = ws;
+
                         tempPlayer.isBot = false;
-    
-                        // console.log("Erro do token: ", tempPlayer);
-    
-                        sendAllPlayersInThisRoom(ws, 'updateMsg',`${tempPlayer.name} se reconectou!`);
-    
-                        sendThisPlayer(ws, 'updateMsg',`Você se reconectou com sucesso!`);
-                        // let roomPlayers = getRoom(getPlayer(ws)).players;
-                        
-                        ws.send(JSON.stringify({
-                            type: 'updateRoomRequest'
-                        }));
-                
+
+                        if(!getRoom(tempPlayer)){
+
+                            console.log("não achou sala pra esse player que reconectou");
+
+                            identifyPlayerToRoom(tempPlayer);
+
+                            sendPiecesToSelect(ws);
+
+                        } else {
+
+                            console.log("achou sala pro q reconectou");
+
+                            ws.send(JSON.stringify({
+                                type: 'reconnected',
+                                playerID: tempPlayer.id,
+                                index: getRoom(tempPlayer).players.indexOf(tempPlayer),
+                                chat: getRoom(tempPlayer).chat
+                            }));
+
+                            sendAllPlayersInThisRoomSystemMsgInChat(ws, `${tempPlayer.name} se reconectou!`);
+                        };
+
+
                     } else {
-                        
+                        console.log("nao achou player com o token");
                         createPlayer(ws);
                         sendIdentifier(ws ,getPlayer(ws));
-                    }
+                    };
     
                 break;
         };
@@ -167,7 +176,26 @@ wsServer.on('connection', function connection(ws){
 
             console.log(`Player ${getPlayer(ws).name} has disconnected from ${getRoom(getPlayer(ws)).id} room`);
 
-            sendAllPlayersInThisRoom(ws, 'updateMsg', `${getPlayer(ws).name} desconectou da sala.`)
+            sendAllPlayersInThisRoomSystemMsgInChat(ws, `${getPlayer(ws).name} desconectou...`);
+
+            if(getPlayer(ws) === getRoom(getPlayer(ws)).turnsPlayer){
+                passTurn(ws);
+
+
+                // getRoom(getPlayer(ws)).turn++
+
+                // if(getRoom(getPlayer(ws)).dice == 6 || getRoom(getPlayer(ws)).killed || getRoom(getPlayer(ws)).justFinishedPiece) {
+                //     --getRoom(getPlayer(ws)).turn
+                //     getRoom(getPlayer(ws)).killed = false;
+                //     getRoom(getPlayer(ws)).justFinishedPiece = false;
+                // }
+
+                // getRoom(getPlayer(ws)).turnsPlayer = getRoom(getPlayer(ws)).players[getRoom(getPlayer(ws)).turn % 4];
+                // getRoom(getPlayer(ws)).dice = null;
+
+                // askUpdateRoom(getRoom(getPlayer(ws)).players);
+                // sendThisPlayer(getRoom(getPlayer(ws)).turnsPlayer.connection, 'ableDiceBtn', '');
+            }
 
         } else {
 
@@ -487,6 +515,12 @@ function passTurn (ws) {
     }
 
     getRoom(getPlayer(ws)).turnsPlayer = getRoom(getPlayer(ws)).players[getRoom(getPlayer(ws)).turn % 4];
+
+    if(getRoom(getPlayer(ws)).turnsPlayer.isBot){
+        getRoom(getPlayer(ws)).turn++
+        getRoom(getPlayer(ws)).turnsPlayer = getRoom(getPlayer(ws)).players[getRoom(getPlayer(ws)).turn % 4];
+    };
+
     getRoom(getPlayer(ws)).dice = null;
 
     askUpdateRoom(getRoom(getPlayer(ws)).players);
@@ -829,7 +863,9 @@ function finalizePiece(ws, piece){
 };
 
 function finalizeGame (ws, winnerPlayer) {
-    sendAllPlayersInThisRoom(ws, 'finalizingGame', winnerPlayer);
+    sendOtherPlayers(ws, 'finalizingGame', winnerPlayer);
+
+    sendThisPlayer(ws, 'finalingGame', ); // nao posso enviar pro player, ele mesmo, que vira objeto circular
 
     resetRoom(getRoom(getPlayer(ws)));
 };
