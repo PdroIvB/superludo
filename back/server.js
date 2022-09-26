@@ -117,7 +117,7 @@ wsServer.on('connection', function connection(ws){
                     }));
             
                 } else {
-            
+                    
                     createPlayer(ws);
                     sendIdentifier(getPlayer(ws));
                 }
