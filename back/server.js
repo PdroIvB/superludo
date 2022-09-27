@@ -26,6 +26,7 @@ wsServer.on('connection', function connection(ws){
         let msg = JSON.parse(message);
 
         switch (msg.type) {
+
             case 'initPlayer':
 
                     console.log("Entrou no initPlayer");
@@ -56,7 +57,7 @@ wsServer.on('connection', function connection(ws){
                     initGameWithRandom1stPlayer(ws, getRoom(getPlayer(ws)));
 
                 break;
-            
+
             case 'sendUpdatedRoom':
 
                     contador++;
@@ -94,14 +95,18 @@ wsServer.on('connection', function connection(ws){
                     passTurn(ws);
 
                 break;
-            
+
             case 'playAgain':
 
                     console.log("recebida msg de playAgain");
+                    console.log(msg.playAgain);
 
                     if(msg.playAgain) {
+
                         sendPiecesToSelect(ws);
+
                     } else {
+
                         getPlayer(ws).roomID = null;
                         getPlayer(ws).name = null;
 
@@ -180,8 +185,6 @@ wsServer.on('connection', function connection(ws){
 
                                 console.log("não achou personagem pro q reconectou");
 
-                                // sendPiecesToSelect(ws);
-
                                 let selectPiecesMsg = {
                                     type: 'selectAPiece',
                                     pieces: selectWhereDontHavePlayers(getRoom(tempPlayer).players),
@@ -211,6 +214,7 @@ wsServer.on('connection', function connection(ws){
 
     ws.on('close', function Closing () {
         if(getPlayer(ws).roomID) {
+
             getPlayer(ws).isBot = true;
 
             console.log(`Player ${getPlayer(ws).name} has disconnected from ${getRoom(getPlayer(ws)).id} room`);
@@ -235,7 +239,7 @@ function selectWhereDontHavePlayers (players) {
     });
 
     return piecesThatCanBeChosen;
-}
+};
 
 function initGameWithRandom1stPlayer (ws, room) {
 
@@ -256,8 +260,6 @@ function initGameWithRandom1stPlayer (ws, room) {
         sendThisPlayer(room.turnsPlayer.connection, 'ableDiceBtn', ``);
 
     } else {
-
-        // sendAllPlayersInThisRoom(ws, 'updateMsg', `Aguardando outros jogadores entrarem para iniciar partida`);
 
         sendAllPlayersInThisRoomSystemMsgInChat(ws, `Aguardando outros jogadores entrarem para iniciar partida`);
     };
@@ -362,7 +364,7 @@ function getPlayer (ws) {
     let currentPlayer = playersWithToken.find(playerWithToken => playerWithToken.player.connection === ws)
 
     return currentPlayer ? currentPlayer.player : false;
-}
+};
 
 function getPiece (ws, msgPiece) {
     return getRoom(getPlayer(ws)).players.find(player => player.id === msgPiece.playerID).pieces.find(piece => piece.id === msgPiece.id);
@@ -493,8 +495,6 @@ function playNPass (ws) {
 
             moveSinglePiece(ws);
 
-            sendAllPlayersInThisRoomSystemMsgInChat(ws, `${getRoom(getPlayer(ws)).turnsPlayer.name} tem apenas uma peça em jogo, ela foi movida automaticamente e a vez será passada`)
-
             passTurn(ws);
 
         } else {
@@ -503,8 +503,6 @@ function playNPass (ws) {
         };
 
     } else {
-
-        sendAllPlayersInThisRoomSystemMsgInChat(ws, `${getRoom(getPlayer(ws)).turnsPlayer.name} não tem peças no tabuleiro e não tirou 6 no dado, a vez será passada`)
 
         passTurn(ws);
     };
@@ -536,11 +534,7 @@ function passTurn (ws) {
 
 function move (ws) {
 
-    sendAllPlayersInThisRoomSystemMsgInChat(ws, `${getRoom(getPlayer(ws)).turnsPlayer.name} está fazendo sua jogada!`);
-
     sendThisPlayer(ws, 'updateMsg',`${getPlayer(ws).name}, sua vez de movimentar um peça! Clique em uma delas!`);
-
-    console.log('pedindo ao cliente pra fazer um movimento');
 
     ws.send(JSON.stringify(msgMakeMove = {
         type: 'makeAMove',
@@ -551,9 +545,14 @@ function move (ws) {
 
 function moveSinglePiece (ws) {
 
-    sendAllPlayersInThisRoomSystemMsgInChat(ws, `A peça de ${getRoom(getPlayer(ws)).turnsPlayer.name} foi movida automaticamente.`)
+    if ( !hasPiecesOnBoard(ws) && getRoom(getPlayer(ws)).dice === 6 && piecesToEnterBoard(ws).length === 1 && !piecesOnFinal(ws).find(piece => (piece.position + getRoom(getPlayer(ws)).dice) <= finalCell(ws))) {
 
-    movePiece(ws, getPlayer(ws).pieces.find(piece => (piece.position !== null && piece.finished !== true && piece.position < 100) || (piece.position > 100 && (piece.position + getRoom(getPlayer(ws)).dice) <= finalCell(ws))));
+        movePiece(ws, getPlayer(ws).pieces.find(piece => piece.position === null));
+
+    } else {
+
+        movePiece(ws, getPlayer(ws).pieces.find(piece => (piece.position !== null && piece.finished !== true && piece.position < 100) || (piece.position > 100 && (piece.position + getRoom(getPlayer(ws)).dice) <= finalCell(ws))));
+    };
 };
 
 function hasPiecesOnBoard (ws) {
@@ -629,6 +628,12 @@ function hasPiecesToEnterBoard (ws) {
     let piecesToEnterBoard = getPlayer(ws).pieces.filter(piece => piece.position === null);
 
     return piecesToEnterBoard.length === 0 ? false : true;
+};
+
+function piecesToEnterBoard (ws) {
+    let piecesToEnterBoard = getPlayer(ws).pieces.filter(piece => piece.position === null);
+
+    return piecesToEnterBoard;
 };
 
 function hasPiecesOnFinal (ws) {
@@ -913,7 +918,7 @@ function canMoveAnyPiece (ws) {
     /*
         pode mexer peça quando:
             - a peça já está no tabuleiro e tirou qualquer numero no dado
-            - todas as peças quando tirou 6, mesmo as que está fora do tabuleiro
+            - todas as peças quando tirou 6, mesmo as que estão fora do tabuleiro
             - na reta final quando tirou um numero menor ou igual ao de casas q faltam
 
         não pode mexer peça quando:
@@ -924,21 +929,33 @@ function canMoveAnyPiece (ws) {
 
 function canMoveOnlyOnePiece (ws) {
 
-    if(piecesOnBoard(ws).length === 1 && hasPiecesToEnterBoard(ws) && getRoom(getPlayer(ws)).dice !== 6 && !piecesOnFinal(ws).find(piece => (piece.position + getRoom(getPlayer(ws)).dice) <= finalCell(ws))) {
+    if(piecesOnBoard(ws).length === 1 && getRoom(getPlayer(ws)).dice !== 6 && !piecesOnFinal(ws).find(piece => (piece.position + getRoom(getPlayer(ws)).dice) <= finalCell(ws))) {
+
         return true;
-    } else if (!hasPiecesToEnterBoard(ws) && getRoom(getPlayer(ws)).dice === 6 && piecesOnBoard(ws).length === 1 && !piecesOnFinal(ws).find(piece => (piece.position + getRoom(getPlayer(ws)).dice) <= finalCell(ws))) {
+
+    } else if (piecesOnBoard(ws).length === 1 && !hasPiecesToEnterBoard(ws) && getRoom(getPlayer(ws)).dice === 6 && !piecesOnFinal(ws).find(piece => (piece.position + getRoom(getPlayer(ws)).dice) <= finalCell(ws))) {
+
         return true;
-    } else if (!hasPiecesOnBoard(ws) && (hasPiecesToEnterBoard(ws) || getRoom(getPlayer(ws)).dice !== 6) && piecesOnFinal(ws).length === 1 && piecesOnFinal(ws).find(piece => (piece.position + getRoom(getPlayer(ws)).dice) <= finalCell(ws))) {
+
+    } else if (piecesOnFinal(ws).length === 1 && piecesOnFinal(ws).find(piece => (piece.position + getRoom(getPlayer(ws)).dice) <= finalCell(ws))) {
+
         return true;
+
+    } else if (!hasPiecesOnBoard(ws) && getRoom(getPlayer(ws)).dice === 6 && piecesToEnterBoard(ws).length === 1 && !piecesOnFinal(ws).find(piece => (piece.position + getRoom(getPlayer(ws)).dice) <= finalCell(ws))) {
+
+        return true;
+
     } else {
+        
         return false;
-    };
+    }
 
     /* 
         Só pode mover uma peça:
-            - se só tem uma peça no tabuleiro e não tirou 6
-            - se tirou 6 mas não tem peças pra entrar no tabuleiro
-            - se só tem uma peça, ela ta na reta final e tirou um numero menor ou igual a quantidade de casas que falta
+            - só tem uma peça no tabuleiro | não tirou 6 | contando que se tem peça na reta final, ela nao pode andar
+            - só tem uma peça no tabuleiro | se tirou 6 mas não tem peças pra entrar no tabuleiro | contando que se tem peça na reta final, ela nao pode andar
+            - só tem uma peça, na reta final, e tirou um numero menor ou igual a quantidade de casas que falta
+            - não tem peça no tabuleiro | tirou 6 | tem apenas uma peça pra entrar no jogo | nao tem peça andável na reta final
     */
 };
 
