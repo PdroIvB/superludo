@@ -32,11 +32,12 @@ wsServer.on('connection', function connection(ws){
 
                     createPlayer(ws);
 
-                    sendIdentifier(ws, getPlayer(ws));
+                    sendIdentifier(ws);
 
                 break;
 
             case 'setName':
+                    console.log('setar um name');
 
                     let player = getPlayer(ws);
 
@@ -149,12 +150,30 @@ wsServer.on('connection', function connection(ws){
 
                             console.log("achou sala pro q reconectou");
 
-                            ws.send(JSON.stringify({
-                                type: 'reconnected',
-                                playerID: tempPlayer.id,
-                                index: getRoom(tempPlayer).players.indexOf(tempPlayer),
-                                chat: getRoom(tempPlayer).chat
-                            }));
+                            if(getRoom(tempPlayer).players.find(player => player && player.connection === ws)){
+                                console.log("achou personagem pro player q reconectou");
+                                
+                                ws.send(JSON.stringify({
+                                    type: 'reconnected',
+                                    playerID: tempPlayer.id,
+                                    index: getRoom(tempPlayer).players.indexOf(tempPlayer),
+                                    chat: getRoom(tempPlayer).chat
+                                }));
+
+                            } else {
+
+                                console.log("não achou personagem pro q reconectou");
+
+                                // sendPiecesToSelect(ws);
+
+                                let selectPiecesMsg = {
+                                    type: 'selectAPiece',
+                                    pieces: selectWhereDontHavePlayers(getRoom(tempPlayer).players),
+                                    playerId: tempPlayer.id
+                                };
+                            
+                                getPlayer(ws).connection.send(JSON.stringify(selectPiecesMsg));
+                            };
 
                             sendAllPlayersInThisRoomSystemMsgInChat(ws, `${tempPlayer.name} se reconectou!`);
                         };
@@ -163,7 +182,7 @@ wsServer.on('connection', function connection(ws){
                     } else {
                         console.log("nao achou player com o token");
                         createPlayer(ws);
-                        sendIdentifier(ws ,getPlayer(ws));
+                        sendIdentifier(ws);
                     };
     
                 break;
@@ -178,24 +197,7 @@ wsServer.on('connection', function connection(ws){
 
             sendAllPlayersInThisRoomSystemMsgInChat(ws, `${getPlayer(ws).name} desconectou...`);
 
-            if(getPlayer(ws) === getRoom(getPlayer(ws)).turnsPlayer){
-                passTurn(ws);
-
-
-                // getRoom(getPlayer(ws)).turn++
-
-                // if(getRoom(getPlayer(ws)).dice == 6 || getRoom(getPlayer(ws)).killed || getRoom(getPlayer(ws)).justFinishedPiece) {
-                //     --getRoom(getPlayer(ws)).turn
-                //     getRoom(getPlayer(ws)).killed = false;
-                //     getRoom(getPlayer(ws)).justFinishedPiece = false;
-                // }
-
-                // getRoom(getPlayer(ws)).turnsPlayer = getRoom(getPlayer(ws)).players[getRoom(getPlayer(ws)).turn % 4];
-                // getRoom(getPlayer(ws)).dice = null;
-
-                // askUpdateRoom(getRoom(getPlayer(ws)).players);
-                // sendThisPlayer(getRoom(getPlayer(ws)).turnsPlayer.connection, 'ableDiceBtn', '');
-            }
+            if(getPlayer(ws) === getRoom(getPlayer(ws)).turnsPlayer) passTurn(ws);
 
         } else {
 
@@ -220,7 +222,9 @@ function initGameWithRandom1stPlayer (ws, room) {
     if(isRoomFull(room)) {
 
         room.turn = Math.floor(Math.random() * 4);
-        sendAllPlayersInThisRoom(ws, 'updateMsg', `${room.players[room.turn % 4].name} foi o jogador sorteado pra jogar primeiro!`);
+        // sendAllPlayersInThisRoom(ws, 'updateMsg', `${room.players[room.turn % 4].name} foi o jogador sorteado pra jogar primeiro!`);
+
+        sendAllPlayersInThisRoomSystemMsgInChat(ws, `${room.players[room.turn % 4].name} foi o jogador sorteado pra jogar primeiro!`);
 
         room.dice = null;
         room.turnsPlayer = room.players[room.turn % 4];
@@ -228,22 +232,20 @@ function initGameWithRandom1stPlayer (ws, room) {
         sendThisPlayer(room.turnsPlayer.connection, 'updateMsg', `${room.turnsPlayer.name}, é a sua vez de jogar!`);
         sendOtherPlayers(room.turnsPlayer.connection, 'updateMsg', `É a de vez de ${room.turnsPlayer.name} jogar!`);
 
-        sendThisPlayer(room.turnsPlayer.connection, 'ableDiceBtn', ``);
-
-        sendThisPlayer(room.turnsPlayer.connection, 'updateMsg', `${room.turnsPlayer.name}, é a sua vez de jogar!`);
-        sendOtherPlayers(room.turnsPlayer.connection, 'updateMsg', `É a de vez de ${room.turnsPlayer.name} jogar!`);
-
+        console.log("enviando autorização pra jogar o dado");
         sendThisPlayer(room.turnsPlayer.connection, 'ableDiceBtn', ``);
 
     } else {
 
-        sendAllPlayersInThisRoom(ws, 'updateMsg', `Aguardando outros jogadores entrarem para iniciar partida`);
+        // sendAllPlayersInThisRoom(ws, 'updateMsg', `Aguardando outros jogadores entrarem para iniciar partida`);
+
+        sendAllPlayersInThisRoomSystemMsgInChat(ws, `Aguardando outros jogadores entrarem para iniciar partida`);
     };
 
     askUpdateRoom(room.players);
 };
 
-function sendIdentifier(ws, player) {
+function sendIdentifier(ws) {
 
     let currentPlayer = playersWithToken.find(playersWithToken => playersWithToken.player.connection === ws);
 
@@ -471,7 +473,9 @@ function playNPass (ws) {
 
             moveSinglePiece(ws);
 
-            sendAllPlayersInThisRoom(ws, 'updateMsg', `${getRoom(getPlayer(ws)).turnsPlayer.name} tem apenas uma peça em jogo, ela foi movida automaticamente e a vez será passada`);
+            // sendAllPlayersInThisRoom(ws, 'updateMsg', `${getRoom(getPlayer(ws)).turnsPlayer.name} tem apenas uma peça em jogo, ela foi movida automaticamente e a vez será passada`);
+
+            sendAllPlayersInThisRoomSystemMsgInChat(ws, `${getRoom(getPlayer(ws)).turnsPlayer.name} tem apenas uma peça em jogo, ela foi movida automaticamente e a vez será passada`)
 
             passTurn(ws);
 
@@ -498,7 +502,9 @@ function playNPass (ws) {
 
     } else {
 
-        sendAllPlayersInThisRoom(ws, 'updateMsg', `${getRoom(getPlayer(ws)).turnsPlayer.name} não tem peças no tabuleiro e não tirou 6 no dado, a vez será passada`);
+        // sendAllPlayersInThisRoom(ws, 'updateMsg', `${getRoom(getPlayer(ws)).turnsPlayer.name} não tem peças no tabuleiro e não tirou 6 no dado, a vez será passada`);
+
+        sendAllPlayersInThisRoomSystemMsgInChat(ws, `${getRoom(getPlayer(ws)).turnsPlayer.name} não tem peças no tabuleiro e não tirou 6 no dado, a vez será passada`)
 
         passTurn(ws);
     };
@@ -524,14 +530,19 @@ function passTurn (ws) {
     getRoom(getPlayer(ws)).dice = null;
 
     askUpdateRoom(getRoom(getPlayer(ws)).players);
+    console.log("enviando autorização pra jogar o dado");
     sendThisPlayer(getRoom(getPlayer(ws)).turnsPlayer.connection, 'ableDiceBtn', '');
 };
 
 function move (ws) {
 
-    sendOtherPlayers(ws, 'updateMsg', `${getRoom(getPlayer(ws)).turnsPlayer.name} está fazendo sua jogada!`);
+    // sendOtherPlayers(ws, 'updateMsg', `${getRoom(getPlayer(ws)).turnsPlayer.name} está fazendo sua jogada!`);
 
-    sendThisPlayer(ws, 'updateMsg',`${getRoom(getPlayer(ws)).turnsPlayer.name}, sua vez de movimentar um peça! Clique em uma delas!`)
+    sendAllPlayersInThisRoomSystemMsgInChat(ws, `${getRoom(getPlayer(ws)).turnsPlayer.name} está fazendo sua jogada!`);
+
+    sendThisPlayer(ws, 'updateMsg',`${getRoom(getPlayer(ws)).turnsPlayer.name}, sua vez de movimentar um peça! Clique em uma delas!`);
+
+    console.log('pedindo ao cliente pra fazer um movimento');
 
     ws.send(JSON.stringify(msgMakeMove = {
         type: 'makeAMove',
@@ -542,7 +553,9 @@ function move (ws) {
 
 function moveSinglePiece (ws) {
 
-    sendAllPlayersInThisRoom(ws, 'updateMsg', `auto moving single piece`)
+    // sendAllPlayersInThisRoom(ws, 'updateMsg', `auto moving single piece`)
+
+    sendAllPlayersInThisRoomSystemMsgInChat(ws, `A peça de ${getRoom(getPlayer(ws)).turnsPlayer.name} foi movida automaticamente.`)
 
     movePiece(ws, getRoom(getPlayer(ws)).turnsPlayer.pieces.find(piece => piece.position !== null && piece.finished !== true));
 };
