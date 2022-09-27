@@ -103,7 +103,11 @@ wsServer.on('connection', function connection(ws){
                         sendPiecesToSelect(ws);
                     } else {
                         getPlayer(ws).roomID = null;
-                        sendThisPlayer(ws, 'closeGame', '');
+                        getPlayer(ws).name = null;
+
+                        ws.send(JSON.stringify({
+                            type: 'selectAName'
+                        }));
                     };
 
                 break;
@@ -871,9 +875,12 @@ function finalizePiece(ws, piece){
 };
 
 function finalizeGame (ws, winnerPlayer) {
-    sendOtherPlayers(ws, 'finalizingGame', winnerPlayer);
+    let index = getRoom(getPlayer(ws)).players.indexOf(winnerPlayer);
 
-    sendThisPlayer(ws, 'finalingGame', ); // nao posso enviar pro player, ele mesmo, que vira objeto circular
+    sendAllPlayersInThisRoom(ws, 'finalizingGame', {
+        winnerIndex: index,
+        winnerName: winnerPlayer.name,
+    });
 
     resetRoom(getRoom(getPlayer(ws)));
 };
