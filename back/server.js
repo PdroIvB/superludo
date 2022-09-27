@@ -140,15 +140,27 @@ wsServer.on('connection', function connection(ws){
 
                         if(!getRoom(tempPlayer)){
 
-                            console.log("não achou sala pra esse player que reconectou");
+                            if(!tempPlayer.name) {
 
-                            identifyPlayerToRoom(tempPlayer);
+                                console.log("não achou sala nem nome pro player q reconectou");
 
-                            sendPiecesToSelect(ws);
+                                ws.send(JSON.stringify({
+                                    type: 'selectAName'
+                                }));
+
+                            } else {
+
+                                console.log("não achou sala, mas achou nome pro player que reconectou");
+    
+                                identifyPlayerToRoom(tempPlayer);
+    
+                                sendPiecesToSelect(ws);
+                            };
+
 
                         } else {
 
-                            console.log("achou sala pro q reconectou");
+                            console.log("achou sala pro q reconectou, deve ter nome");
 
                             if(getRoom(tempPlayer).players.find(player => player && player.connection === ws)){
                                 console.log("achou personagem pro player q reconectou");
@@ -183,6 +195,10 @@ wsServer.on('connection', function connection(ws){
                         console.log("nao achou player com o token");
                         createPlayer(ws);
                         sendIdentifier(ws);
+
+                        ws.send(JSON.stringify({
+                            type: 'selectAName'
+                        }));
                     };
     
                 break;
@@ -467,42 +483,22 @@ function resetRoom (room) {
 
 function playNPass (ws) {
 
-    if(hasPiecesOnBoard(getRoom(getPlayer(ws)).turnsPlayer)) {
+    if(canMoveAnyPiece(ws)) {
 
-        if(playerPiecesOnBoard(getRoom(getPlayer(ws)).turnsPlayer).length === 1 && getRoom(getPlayer(ws)).dice !== 6) {
+        if(canMoveOnlyOnePiece(ws)) {
 
             moveSinglePiece(ws);
-
-            // sendAllPlayersInThisRoom(ws, 'updateMsg', `${getRoom(getPlayer(ws)).turnsPlayer.name} tem apenas uma peça em jogo, ela foi movida automaticamente e a vez será passada`);
 
             sendAllPlayersInThisRoomSystemMsgInChat(ws, `${getRoom(getPlayer(ws)).turnsPlayer.name} tem apenas uma peça em jogo, ela foi movida automaticamente e a vez será passada`)
 
             passTurn(ws);
-
-        } else if(playerPiecesOnBoard(getRoom(getPlayer(ws)).turnsPlayer).length === 1 && getRoom(getPlayer(ws)).dice === 6) { 
-
-            if(!hasPiecesToEnterBoard(ws)) {
-
-                moveSinglePiece(ws);
-
-                passTurn(ws);
-            } else {
-
-                move(ws);
-            };
 
         } else {
 
             move(ws);
         };
 
-    } else if(!hasPiecesOnBoard(getRoom(getPlayer(ws)).turnsPlayer) && getRoom(getPlayer(ws)).dice == 6) {
-
-        move(ws);
-
     } else {
-
-        // sendAllPlayersInThisRoom(ws, 'updateMsg', `${getRoom(getPlayer(ws)).turnsPlayer.name} não tem peças no tabuleiro e não tirou 6 no dado, a vez será passada`);
 
         sendAllPlayersInThisRoomSystemMsgInChat(ws, `${getRoom(getPlayer(ws)).turnsPlayer.name} não tem peças no tabuleiro e não tirou 6 no dado, a vez será passada`)
 
@@ -514,11 +510,11 @@ function passTurn (ws) {
 
     getRoom(getPlayer(ws)).turn++
 
-    if(getRoom(getPlayer(ws)).dice == 6 || getRoom(getPlayer(ws)).killed || getRoom(getPlayer(ws)).justFinishedPiece) {
+    if(getRoom(getPlayer(ws)).dice === 6 || getRoom(getPlayer(ws)).killed || getRoom(getPlayer(ws)).justFinishedPiece) {
         --getRoom(getPlayer(ws)).turn
         getRoom(getPlayer(ws)).killed = false;
         getRoom(getPlayer(ws)).justFinishedPiece = false;
-    }
+    };
 
     getRoom(getPlayer(ws)).turnsPlayer = getRoom(getPlayer(ws)).players[getRoom(getPlayer(ws)).turn % 4];
 
@@ -536,36 +532,32 @@ function passTurn (ws) {
 
 function move (ws) {
 
-    // sendOtherPlayers(ws, 'updateMsg', `${getRoom(getPlayer(ws)).turnsPlayer.name} está fazendo sua jogada!`);
-
     sendAllPlayersInThisRoomSystemMsgInChat(ws, `${getRoom(getPlayer(ws)).turnsPlayer.name} está fazendo sua jogada!`);
 
-    sendThisPlayer(ws, 'updateMsg',`${getRoom(getPlayer(ws)).turnsPlayer.name}, sua vez de movimentar um peça! Clique em uma delas!`);
+    sendThisPlayer(ws, 'updateMsg',`${getPlayer(ws).name}, sua vez de movimentar um peça! Clique em uma delas!`);
 
     console.log('pedindo ao cliente pra fazer um movimento');
 
     ws.send(JSON.stringify(msgMakeMove = {
         type: 'makeAMove',
-        playerID: getRoom(getPlayer(ws)).turnsPlayer.id,
+        playerID: getPlayer(ws).id,
         dice: numDado
     }));
 };
 
 function moveSinglePiece (ws) {
 
-    // sendAllPlayersInThisRoom(ws, 'updateMsg', `auto moving single piece`)
-
     sendAllPlayersInThisRoomSystemMsgInChat(ws, `A peça de ${getRoom(getPlayer(ws)).turnsPlayer.name} foi movida automaticamente.`)
 
-    movePiece(ws, getRoom(getPlayer(ws)).turnsPlayer.pieces.find(piece => piece.position !== null && piece.finished !== true));
+    movePiece(ws, getPlayer(ws).pieces.find(piece => (piece.position !== null && piece.finished !== true && piece.position < 100) || (piece.position > 100 && (piece.position + getRoom(getPlayer(ws)).dice) <= finalCell(ws))));
 };
 
-function hasPiecesOnBoard (player) {
-    return player.pieces.find(piece => piece.position !== null && piece.finished !== true) ? true : false;
+function hasPiecesOnBoard (ws) {
+    return getPlayer(ws).pieces.find(piece => piece.position !== null && piece.finished !== true && piece.position < 100) ? true : false;
 };
 
-function playerPiecesOnBoard(player) {
-    return player.pieces.filter(piece => piece.position !== null && piece.finished !== true);
+function piecesOnBoard(ws) {
+    return getPlayer(ws).pieces.filter(piece => piece.position !== null && piece.finished !== true && piece.position < 100);
 };
 
 function bot() {
@@ -630,9 +622,21 @@ function hasPìeceWithPositionConflict (ws, pieceInMoving) {
 };
 
 function hasPiecesToEnterBoard (ws) {
-    let piecesOffBoard = getPlayer(ws).pieces.filter(piece => piece.position === null);
+    let piecesToEnterBoard = getPlayer(ws).pieces.filter(piece => piece.position === null);
 
-    return piecesOffBoard.length === 0 ? false : true;
+    return piecesToEnterBoard.length === 0 ? false : true;
+};
+
+function hasPiecesOnFinal (ws) {
+    let piecesOnFinal = getPlayer(ws).pieces.filter(piece => piece.position > 100);
+
+    return piecesOnFinal.length > 0 ? true : false;
+};
+
+function piecesOnFinal (ws) {
+    let piecesOnFinal = getPlayer(ws).pieces.filter(piece => piece.position > 100);
+
+    return piecesOnFinal;
 };
 
 function pieceWithPositionConflict (ws, pieceInMoving) {
@@ -651,31 +655,22 @@ function isPieceInProtectedCell (protectedCells, piece) {
 
 function movePiece (ws, piece) {
 
-    if(!hasPiecesOnBoard(getRoom(getPlayer(ws)).turnsPlayer)){
+    if (piece.position === null) {
         if(getRoom(getPlayer(ws)).turnsPlayer === getRoom(getPlayer(ws)).players[0]) {
+
             piece.position = piece.position - 5 + getRoom(getPlayer(ws)).dice;
+
         } else if (getRoom(getPlayer(ws)).turnsPlayer === getRoom(getPlayer(ws)).players[1]) {
+
             piece.position = piece.position + 8 + getRoom(getPlayer(ws)).dice;
-            
+
         } else if (getRoom(getPlayer(ws)).turnsPlayer === getRoom(getPlayer(ws)).players[2]) {
+
             piece.position = piece.position + 21 + getRoom(getPlayer(ws)).dice;
-            
+
         } else if (getRoom(getPlayer(ws)).turnsPlayer === getRoom(getPlayer(ws)).players[3]) {
+
             piece.position = piece.position + 34 + getRoom(getPlayer(ws)).dice;
-            
-        };
-    } else if (piece.position === null) {
-        if(getRoom(getPlayer(ws)).turnsPlayer === getRoom(getPlayer(ws)).players[0]) {
-            piece.position = piece.position - 5 + getRoom(getPlayer(ws)).dice;
-        } else if (getRoom(getPlayer(ws)).turnsPlayer === getRoom(getPlayer(ws)).players[1]) {
-            piece.position = piece.position + 8 + getRoom(getPlayer(ws)).dice;
-            
-        } else if (getRoom(getPlayer(ws)).turnsPlayer === getRoom(getPlayer(ws)).players[2]) {
-            piece.position = piece.position + 21 + getRoom(getPlayer(ws)).dice;
-            
-        } else if (getRoom(getPlayer(ws)).turnsPlayer === getRoom(getPlayer(ws)).players[3]) {
-            piece.position = piece.position + 34 + getRoom(getPlayer(ws)).dice;
-            
         };
     } else {
 
@@ -881,6 +876,63 @@ function finalizeGame (ws, winnerPlayer) {
     sendThisPlayer(ws, 'finalingGame', ); // nao posso enviar pro player, ele mesmo, que vira objeto circular
 
     resetRoom(getRoom(getPlayer(ws)));
+};
+
+function finalCell (ws) {
+    switch (getRoom(getPlayer(ws)).players.indexOf(getPlayer(ws))) {
+        case 0:
+            return 106;
+        case 1:
+            return 111;
+        case 2:
+            return 116;
+        case 3:
+            return 121;
+    };
+};
+
+function canMoveAnyPiece (ws) {
+
+    if(hasPiecesOnBoard(ws)) {
+        return true;
+    } else if (hasPiecesToEnterBoard(ws) && getRoom(getPlayer(ws)).dice === 6) {
+        return true;
+    } else if (hasPiecesOnFinal(ws) && piecesOnFinal(ws).find(piece => (piece.position + getRoom(getPlayer(ws)).dice) <= finalCell(ws))) {
+        return true;
+    } else {
+        return false;
+    };
+
+    /*
+        pode mexer peça quando:
+            - a peça já está no tabuleiro e tirou qualquer numero no dado
+            - todas as peças quando tirou 6, mesmo as que está fora do tabuleiro
+            - na reta final quando tirou um numero menor ou igual ao de casas q faltam
+
+        não pode mexer peça quando:
+            - não tem peça no tabuleiro e não tirou 6
+            - ela ta na reta final q não tirou numero no dado menor ou igual a quantidade de casas q faltam
+    */
+};
+
+function canMoveOnlyOnePiece (ws) {
+
+    if(piecesOnBoard(ws).length === 1 && hasPiecesToEnterBoard(ws) && getRoom(getPlayer(ws)).dice !== 6 && !piecesOnFinal(ws).find(piece => (piece.position + getRoom(getPlayer(ws)).dice) <= finalCell(ws))) {
+        return true;
+    } else if (!hasPiecesToEnterBoard(ws) && getRoom(getPlayer(ws)).dice === 6 && piecesOnBoard(ws).length === 1 && !piecesOnFinal(ws).find(piece => (piece.position + getRoom(getPlayer(ws)).dice) <= finalCell(ws))) {
+        return true;
+    } else if (!hasPiecesOnBoard(ws) && (hasPiecesToEnterBoard(ws) || getRoom(getPlayer(ws)).dice !== 6) && piecesOnFinal(ws).length === 1 && piecesOnFinal(ws).find(piece => (piece.position + getRoom(getPlayer(ws)).dice) <= finalCell(ws))) {
+        return true;
+    } else {
+        return false;
+    };
+
+    /* 
+        Só pode mover uma peça:
+            - se só tem uma peça no tabuleiro e não tirou 6
+            - se tirou 6 mas não tem peças pra entrar no tabuleiro
+            - se só tem uma peça, ela ta na reta final e tirou um numero menor ou igual a quantidade de casas que falta
+    */
 };
 
 server.listen(port, () => {console.log(`server listening on port ${port}`)});
