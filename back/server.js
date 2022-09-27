@@ -3,9 +3,7 @@ const app = express();
 const port = 9999;
 const server = require('http').createServer(app);
 const WebSocket = require('ws');
-const { v4 } = require('uuid');
-const { request, get } = require('http');
-const { inspect } = require('node:util');
+const { v4 } = require('uuid'); 
 
 app.use(express.json());
 
@@ -13,8 +11,6 @@ const wsServer = new WebSocket.Server({ server:server });
 
 const playersWithToken = [];
 const rooms = [];
-let contador = 0;
-
 wsServer.on('connection', function connection(ws){
     console.log('a new client has connected');
 
@@ -60,9 +56,6 @@ wsServer.on('connection', function connection(ws){
 
             case 'sendUpdatedRoom':
 
-                    contador++;
-                    console.log("enviando a sala atualizada", contador);
-
                     ws.send(JSON.stringify(msgRoom = {
                         type: 'roomUpdate',
                         room: getRoom(getPlayer(ws))
@@ -71,8 +64,6 @@ wsServer.on('connection', function connection(ws){
                 break;
 
             case 'dado':
-
-                    console.log('chegamos no type dado');
 
                     numDado = Math.floor(Math.random() * 6 + 1);
 
@@ -88,8 +79,6 @@ wsServer.on('connection', function connection(ws){
 
             case 'move':
 
-                    console.log("recebido info do move");
-
                     movePiece(ws, getPiece(ws, msg.piece));
 
                     passTurn(ws);
@@ -97,9 +86,6 @@ wsServer.on('connection', function connection(ws){
                 break;
 
             case 'playAgain':
-
-                    console.log("recebida msg de playAgain");
-                    console.log(msg.playAgain);
 
                     if(msg.playAgain) {
 
@@ -118,8 +104,6 @@ wsServer.on('connection', function connection(ws){
                 break;
 
             case 'chat':
-
-                    console.log('msg de chat recebida');
 
                     getRoom(getPlayer(ws)).chat.push({
                         playerName: getPlayer(ws).name,
@@ -246,7 +230,6 @@ function initGameWithRandom1stPlayer (ws, room) {
     if(isRoomFull(room)) {
 
         room.turn = Math.floor(Math.random() * 4);
-        // sendAllPlayersInThisRoom(ws, 'updateMsg', `${room.players[room.turn % 4].name} foi o jogador sorteado pra jogar primeiro!`);
 
         sendAllPlayersInThisRoomSystemMsgInChat(ws, `${room.players[room.turn % 4].name} foi o jogador sorteado pra jogar primeiro!`);
 
@@ -256,7 +239,6 @@ function initGameWithRandom1stPlayer (ws, room) {
         sendThisPlayer(room.turnsPlayer.connection, 'updateMsg', `${room.turnsPlayer.name}, é a sua vez de jogar!`);
         sendOtherPlayers(room.turnsPlayer.connection, 'updateMsg', `É a de vez de ${room.turnsPlayer.name} jogar!`);
 
-        console.log("enviando autorização pra jogar o dado");
         sendThisPlayer(room.turnsPlayer.connection, 'ableDiceBtn', ``);
 
     } else {
@@ -341,7 +323,7 @@ function sendPiecesToSelect (ws) {
         pieces: selectWhereDontHavePlayers(getRoom(getPlayer(ws)).players)
     };
 
-    getPlayer(ws).connection.send(JSON.stringify(selectPiecesMsg))
+    ws.send(JSON.stringify(selectPiecesMsg))
 };
 
 function createRoom (id) {
@@ -495,6 +477,7 @@ function playNPass (ws) {
 
             moveSinglePiece(ws);
 
+            if(getRoom(getPlayer(ws)).turn === null) return;
             passTurn(ws);
 
         } else {
@@ -528,7 +511,6 @@ function passTurn (ws) {
     getRoom(getPlayer(ws)).dice = null;
 
     askUpdateRoom(getRoom(getPlayer(ws)).players);
-    console.log("enviando autorização pra jogar o dado");
     sendThisPlayer(getRoom(getPlayer(ws)).turnsPlayer.connection, 'ableDiceBtn', '');
 };
 
@@ -561,36 +543,6 @@ function hasPiecesOnBoard (ws) {
 
 function piecesOnBoard(ws) {
     return getPlayer(ws).pieces.filter(piece => piece.position !== null && piece.finished !== true && piece.position < 100);
-};
-
-function bot() {
-//TODO fazer o bot;
-};
-
-function passTurnForBot () {
-    if(isWhoIsGoingToPlayForBot()) {
-        getRoom(getPlayer(ws)).turn++;
-        
-        console.log('sala rifhtbefore sending: ', getRoom(getPlayer(ws)));
-        let msgEndedTurn = {
-            type: 'endedTurn',
-            room: getRoom(getPlayer(ws))
-        };
-    
-        socketClient.send(JSON.stringify(msgEndedTurn));
-    } else {
-        console.log(`não sou o jogador da vez, esperando ${getRoom(getPlayer(ws)).turnsPlayer.name} enviar o fim do turno`);
-    }
-};
-
-function isWhoIsGoingToPlayForBot () {
-    if(((++getRoom(getPlayer(ws)).turn) % 4) == getRoom(getPlayer(ws)).players.indexOf(getRoom(getPlayer(ws)).players.find(player => player.id === playerID))) {
-        --getRoom(getPlayer(ws)).turn;
-        return true;
-    } else {
-        --getRoom(getPlayer(ws)).turn;
-        return false;
-    }
 };
 
 function killAnotherPiece (ws, pieceInMoving) {
@@ -937,7 +889,7 @@ function canMoveOnlyOnePiece (ws) {
 
         return true;
 
-    } else if (piecesOnFinal(ws).length === 1 && piecesOnFinal(ws).find(piece => (piece.position + getRoom(getPlayer(ws)).dice) <= finalCell(ws))) {
+    } else if (piecesOnFinal(ws).length === 1 && piecesOnFinal(ws).find(piece => (piece.position + getRoom(getPlayer(ws)).dice) <= finalCell(ws)) && !hasPiecesOnBoard(ws)) {
 
         return true;
 
@@ -954,7 +906,7 @@ function canMoveOnlyOnePiece (ws) {
         Só pode mover uma peça:
             - só tem uma peça no tabuleiro | não tirou 6 | contando que se tem peça na reta final, ela nao pode andar
             - só tem uma peça no tabuleiro | se tirou 6 mas não tem peças pra entrar no tabuleiro | contando que se tem peça na reta final, ela nao pode andar
-            - só tem uma peça, na reta final, e tirou um numero menor ou igual a quantidade de casas que falta
+            - só tem uma peça, na reta final, e tirou um numero menor ou igual a quantidade de casas que falta | não tem peças no tabuleiro
             - não tem peça no tabuleiro | tirou 6 | tem apenas uma peça pra entrar no jogo | nao tem peça andável na reta final
     */
 };
