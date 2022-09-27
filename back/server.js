@@ -31,10 +31,13 @@ wsServer.on('connection', function connection(ws){
 
                     sendIdentifier(ws);
 
+                    ws.send(JSON.stringify({
+                        type: 'selectAName'
+                    }));
+
                 break;
 
             case 'setName':
-                    console.log('setar um name');
 
                     let player = getPlayer(ws);
 
@@ -305,8 +308,6 @@ function insertPLayerInRoomWithPieces (ws, position) {
 
             sendThisPlayer(ws, 'updateMsg', `Outro jogador já escolheu essas peças. Escolha alguma outra!`);
 
-            identifyPlayerToRoom(getPlayer(ws));
-
             sendPiecesToSelect(ws);
 
         } else {
@@ -318,12 +319,20 @@ function insertPLayerInRoomWithPieces (ws, position) {
 
 function sendPiecesToSelect (ws) {
 
-    let selectPiecesMsg = {
-        type: 'selectAPiece',
-        pieces: selectWhereDontHavePlayers(getRoom(getPlayer(ws)).players)
-    };
+    if(selectWhereDontHavePlayers(getRoom(getPlayer(ws)).players).length === 0) {
 
-    ws.send(JSON.stringify(selectPiecesMsg))
+        identifyPlayerToRoom(ws);
+        sendPiecesToSelect(ws);
+
+    } else {
+
+        let selectPiecesMsg = {
+            type: 'selectAPiece',
+            pieces: selectWhereDontHavePlayers(getRoom(getPlayer(ws)).players)
+        };
+
+        ws.send(JSON.stringify(selectPiecesMsg))
+    };
 };
 
 function createRoom (id) {
